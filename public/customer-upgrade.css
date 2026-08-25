@@ -1,0 +1,56 @@
+@import url("https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/customer-upgrade.css");
+
+:root { --jbs-recovery-accent:#d51f2c; --jbs-recovery-dark:#172033; }
+
+/* Recovery/mobile fixes */
+.jbs-bottom-nav {
+  left: max(8px, env(safe-area-inset-left)) !important;
+  right: max(8px, env(safe-area-inset-right)) !important;
+  bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  width: auto !important;
+  max-width: none !important;
+  transform: none !important;
+  margin: 0 !important;
+  grid-template-columns: repeat(5, minmax(0,1fr)) !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+.jbs-bottom-nav button { min-width:0 !important; width:100% !important; padding-left:4px !important; padding-right:4px !important; }
+.jbs-bottom-nav button small { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.jbs-app-content { padding-bottom: 112px !important; }
+.jbs-owner-preview-banner { position:sticky !important; top:0 !important; z-index:120 !important; }
+
+/* Hide the older flat builder drawing when the enhanced visual is ready. */
+.jbs-builder-preview-content.jbs-recovery-enhanced > .jbs-builder-svg { display:none !important; }
+.jbs-recovery-live { display:grid; gap:12px; }
+.jbs-recovery-live-head { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+.jbs-recovery-live-badge { display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#173c2e; background:#e9f7ef; border:1px solid #bfe3cc; padding:7px 10px; border-radius:999px; }
+.jbs-recovery-live-badge::before { content:""; width:8px; height:8px; border-radius:50%; background:#20a05a; box-shadow:0 0 0 4px rgba(32,160,90,.12); }
+.jbs-recovery-view-toggle { display:flex; padding:3px; border-radius:12px; background:#edf0f5; gap:3px; }
+.jbs-recovery-view-toggle button { border:0; background:transparent; color:#586174; font-weight:800; font-size:12px; min-height:36px; padding:0 10px; border-radius:9px; }
+.jbs-recovery-view-toggle button.active { background:#fff; color:#172033; box-shadow:0 1px 6px rgba(23,32,51,.12); }
+.jbs-recovery-stage { position:relative; overflow:hidden; border-radius:20px; min-height:290px; background:linear-gradient(180deg,#eaf1f7 0 45%,#d5c7aa 45% 100%); border:1px solid rgba(23,32,51,.1); }
+.jbs-recovery-stage svg { display:block; width:100%; height:auto; min-height:290px; }
+.jbs-recovery-stage .sky-label { font:800 12px system-ui,sans-serif; fill:#647084; letter-spacing:.08em; }
+.jbs-recovery-stage .dim { font:800 12px system-ui,sans-serif; fill:#172033; }
+.jbs-recovery-stage .note { font:700 11px system-ui,sans-serif; fill:#596275; }
+.jbs-recovery-stage .rail { stroke-linecap:round; stroke-linejoin:round; }
+.jbs-recovery-specs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.jbs-recovery-specs div { border:1px solid #e0e4eb; background:#fff; border-radius:13px; padding:10px 11px; min-width:0; }
+.jbs-recovery-specs span { display:block; font-size:10px; color:#747d8e; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.jbs-recovery-specs b { display:block; margin-top:3px; font-size:13px; color:#172033; overflow-wrap:anywhere; }
+.jbs-recovery-tip { margin:0; font-size:12px; color:#677083; line-height:1.45; }
+.jbs-recovery-tip b { color:#172033; }
+
+.jbs-recovery-error { position:fixed; z-index:9999; left:12px; right:12px; bottom:12px; background:#fff; border:1px solid #e2e6ec; border-left:5px solid #d51f2c; border-radius:14px; padding:14px; display:grid; gap:5px; box-shadow:0 12px 30px rgba(0,0,0,.18); font:14px system-ui,sans-serif; }
+.jbs-recovery-error button { justify-self:start; border:0; border-radius:9px; padding:9px 13px; background:#172033; color:#fff; font-weight:800; }
+
+@media (max-width: 520px) {
+  .jbs-builder-modal { width:calc(100vw - 12px) !important; max-width:none !important; margin:6px !important; }
+  .jbs-builder-shell { grid-template-columns:1fr !important; }
+  .jbs-builder-preview-panel { position:static !important; top:auto !important; }
+  .jbs-recovery-stage { min-height:250px; }
+  .jbs-recovery-stage svg { min-height:250px; }
+  .jbs-recovery-specs { grid-template-columns:1fr 1fr; }
+  .jbs-owner-drawer { width:min(100%, 520px) !important; }
+}

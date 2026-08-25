@@ -1,4 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "exit 0"
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/legacy.html" },
+    { "source": "/legacy-static/:path*", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/legacy-static/:path*" },
+    { "source": "/api/:path*", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/api/:path*" },
+    { "source": "/manifest.webmanifest", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/manifest.webmanifest" },
+    { "source": "/icon.svg", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/icon.svg" },
+    { "source": "/sw.js", "destination": "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app/sw.js" }
+  ]
 }
