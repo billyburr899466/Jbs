@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const preservedProduction = "https://jbs-universal-renovations-lfo67nhva-billyburr89-9570s-projects.vercel.app";
+// Preview-only source. Production remains untouched while this branch is tested.
+const preservedProduction = "https://jbs-universal-renovations-app.vercel.app";
 
 const nextConfig: NextConfig = {
   async rewrites() {
