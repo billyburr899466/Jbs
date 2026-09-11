@@ -5,7 +5,7 @@ import { chromium as playwright } from 'playwright-core';
 import chromium from '@sparticuz/chromium';
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3210'],{stdio:['ignore','pipe','pipe']});
 server.stdout.on('data',s=>process.stdout.write(s));server.stderr.on('data',s=>process.stderr.write(s));
-let browser;
+let browser,lastPage;
 const watchdog=setTimeout(()=>{console.error('Browser verification exceeded 4 minutes');server.kill();process.exit(1);},240000);
 const url='http://127.0.0.1:3210';
 async function ready(){for(let i=0;i<60;i++){try{if((await fetch(url)).ok)return;}catch{}await new Promise(r=>setTimeout(r,500));}throw new Error('Test server did not start');}
@@ -33,11 +33,11 @@ async function context(owner=false,width=390){
   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data),headers:{'access-control-allow-origin':'*'}});
  });
  if(owner)await ctx.addInitScript(({token,user})=>localStorage.setItem('sb-bjmdtxxlzzhxskxkllvt-auth-token',JSON.stringify({access_token:token,refresh_token:'test-refresh',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user})),{token:actorToken,user:actor});
- const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(12000);
+ const page=await ctx.newPage();lastPage=page;page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(12000);
  return {ctx,page,writes,errors,plans,requests,actor};
 }
 async function visible(page,selector){await page.locator(selector).first().waitFor({state:'visible'});}
-async function click(page,selector){await page.locator(selector).first().click();}
+async function click(page,selector){await page.locator(selector).first().click({noWaitAfter:true});}
 async function demoFlow(width){
  const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await click(page,'.jbs-demo-entry');
  await visible(page,'[data-action="open-builder"]');
@@ -81,4 +81,4 @@ async function customerFlow(){
  console.log('PASS customer: authenticated private design save and quote request preserve identity, plan link, scope and preview image; owner tools hidden');await ctx.close();
 }
 async function ownerFlow(){const {ctx,page,writes,errors}=await context(true,1280);await page.goto(url);await visible(page,'#jbs-owner-upgrade-root');await click(page,'[data-owner-action="toggle"]');await click(page,'[data-owner-action="preview-builder"]');await visible(page,'[data-deck-scene]');await click(page,'[data-action="close-modal"]');await page.getByRole('button',{name:'Back to Owner',exact:true}).click();await visible(page,'[data-owner-action="toggle"]');assert.equal(await page.locator('#jbs-customer-upgrade-root').count(),0);assert.ok(await page.evaluate(()=>localStorage.getItem('sb-bjmdtxxlzzhxskxkllvt-auth-token')));assert.equal(writes.length,0,'Owner preview mutated data');assert.deepEqual(errors,[]);console.log('PASS owner: guest builder preview returns to owner without signing out or writing records');await ctx.close();}
-try{await ready();await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);console.log('PASS API: unauthenticated quote response rejected');console.log('JBs 2.2.0 verification complete');}catch(e){console.error(e);process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}
+try{await ready();await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);console.log('PASS API: unauthenticated quote response rejected');console.log('JBs 2.2.0 verification complete');}catch(e){console.error(e);if(lastPage)try{console.error('Current view:',(await lastPage.locator('body').innerText({timeout:2000})).slice(-3500));}catch{}process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}
