@@ -32,7 +32,7 @@ async function click(page,selector){await page.locator(selector).first().click()
 async function demoFlow(width){
  const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await click(page,'.jbs-demo-entry');
  await visible(page,'[data-action="open-builder"]');
- assert.equal(await page.locator('[data-action="nav"][data-view="messages"]').count(),1);
+ assert.equal(await page.locator('.jbs-bottom-nav [data-action="nav"][data-view="messages"]').count(),1);
  await click(page,'[data-action="open-builder"]');
  await page.locator('[data-field="builder.name"]').fill('Patio Design Test');
  await page.locator('[data-field="builder.length"]').fill('20');await page.locator('[data-field="builder.depth"]').fill('14');await page.locator('[data-field="builder.shape"]').selectOption('l_shape');

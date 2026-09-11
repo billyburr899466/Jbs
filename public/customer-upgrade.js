@@ -1652,7 +1652,7 @@ function handleInput(event) {
   else if (field.startsWith("plan.")) state.planDraft[field.slice(5)] = value;
   else if (field.startsWith("builder.")) {
     state.builderDraft[field.slice(8)] = value;
-    if (field === 'builder.shape') render(); else updateBuilderPreview();
+    if (field === 'builder.shape') { if(value==='l_shape'){state.builderDraft.notchLength=Number(state.builderDraft.length)/2;state.builderDraft.notchDepth=Number(state.builderDraft.depth)/2;}render(); } else updateBuilderPreview();
   }
   else if (field.startsWith("estimate.")) {
     state.estimatorDraft ||= {};
