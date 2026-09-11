@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --test tests/*.test.mjs",
-    "test:browser": "playwright test",
+    "test:browser": "node tests/browser.mjs",
     "verify": "npm test && next build && node tests/browser.mjs"
   },
   "dependencies": {

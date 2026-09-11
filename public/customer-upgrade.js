@@ -231,6 +231,11 @@ function startDemo() {
 async function bootCustomer(session) {
   if (!session?.user) return;
   const email = String(session.user.email || "").toLowerCase();
+  const sameAccount = !state.demo && state.session?.user?.id === session.user.id;
+  if (sameAccount && ((state.owner && state.ownerRoot?.isConnected) || (!state.owner && state.root?.isConnected))) {
+    state.session = session;
+    return;
+  }
   if (OWNER_EMAILS.has(email)) {
     state.demo = false;
     if (state.ownerRoot) state.ownerRoot.hidden = false;
@@ -299,6 +304,7 @@ async function detectSession() {
 }
 
 window.addEventListener("jbs:customer-ready", (event) => {
+  if (state.demo) return;
   if (window.__JBS_SESSION) bootCustomer(window.__JBS_SESSION);
   else if (event.detail?.userId) detectSession();
 });
