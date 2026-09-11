@@ -274,14 +274,14 @@ function applyOpenIntent() {
 function enhanceEntry() {
   if (state.session || document.querySelector(".jbs-demo-entry")) return;
   const card = document.querySelector(".auth-card");
-  if (!card) return;
+  const version = card?.querySelector(".app-version");
+  if (!version) return;
   const button = document.createElement("button");
   button.type = "button";
   button.className = "auth-switch secondary jbs-demo-entry";
   button.textContent = "Preview the Customer Demo";
   button.addEventListener("click", startDemo);
-  const version = card.querySelector(".app-version");
-  card.insertBefore(button, version || null);
+  card.insertBefore(button, version);
 }
 
 async function detectSession() {
