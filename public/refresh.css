@@ -1,0 +1,283 @@
+/* JB's 2.3 workspace: shared design language for owners and customers. */
+:root { --orange:#bd2938; --ink:#17263a; --muted:#617084; --line:#dce2e9; --bg:#f3f5f7; --jbs-navy:#17263a; --jbs-navy-2:#243b53; --jbs-red:#bd2938; --jbs-red-dark:#9b1f2d; --jbs-soft:#f3f5f7; --jbs-muted:#617084; }
+body {font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5;}
+button,a,input,textarea,select {-webkit-tap-highlight-color:transparent;}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible {outline:3px solid #628dc0;outline-offset:3px;}
+button:disabled {cursor:wait;opacity:.65;}
+[hidden] {display:none!important;}
+/* Sign in and owner dashboard. */
+.auth-shell {background:radial-gradient(ellipse at 15% 10%,#294462 0,transparent 55%),#122236;padding:36px 20px;}
+.auth-card {border:0;border-radius:24px;padding:30px;box-shadow:0 24px 80px #07142270;}
+.auth-logo {width:112px;border-radius:22px;margin:0 0 24px;}
+.auth-card h1 {font-size:28px;letter-spacing:-.04em;}
+.auth-card>p {line-height:1.65;}
+.auth-card input {min-height:48px;background:#f8fafc;}
+.auth-card .auth-submit {min-height:48px;box-shadow:none;}
+.auth-switch {padding:10px 0;min-height:44px;}
+.auth-card .jbs-demo-entry {border:1px solid #dce2e9;background:#f5f7fa;border-radius:10px;padding:12px;margin-top:12px!important;}
+body:has(.owner-nav)>main {max-width:1240px;padding-top:32px;}
+body:has(.owner-nav)>main>header {padding:24px 26px;border-radius:20px;background:#17263a;color:#fff;align-items:center;}
+body:has(.owner-nav)>main>header h1 {letter-spacing:-.04em;font-size:30px;}
+body:has(.owner-nav)>main>header p,body:has(.owner-nav)>main>header .sync,body:has(.owner-nav)>main>header .app-version-inline,body:has(.owner-nav)>main>header .signout {color:#d2dce8;}
+body:has(.owner-nav)>main>header small {color:#edc47a;}
+.primary {box-shadow:none;min-height:44px;}
+.panel,.stats button,.stats article,.detail-card,.documents {border-radius:16px;box-shadow:0 3px 10px #17263a04;}
+.stats button,.stats article {padding:22px;border-top:3px solid #203b58;}
+.stats strong {font-size:32px;letter-spacing:-.04em;}
+.stats button small {color:#9b2431;}
+.dashboard-row {border-radius:8px;padding:16px 10px;}
+.actions button {padding:18px 14px;min-height:82px;}
+.actions button:hover,.dashboard-row:hover,.openable:hover {background:#f8f3f3;}
+.conversation-list>button {min-height:88px;padding:16px 12px;}
+.conversation-list>button.selected {background:#f9edef;}
+.conversation-pane {padding:18px;}
+.message-thread {background:#f1f4f7;padding:18px;gap:14px;}
+.message {padding:12px 15px;border-radius:15px;}
+.message.mine {background:#e7edf5;border-color:#d0dce9;}
+.message-compose textarea {min-height:64px;}
+.filters button {min-height:44px;}
+.list-search input {min-height:46px;}
+.owner-nav {box-shadow:0 10px 30px #17263a20;}
+/* Customer workspace. */
+.jbs-customer-app,.jbs-customer-app.is-demo {background:#f3f5f7;}
+.jbs-app-header {margin-bottom:0;box-shadow:none;border-bottom:1px solid #33475f;min-height:84px;padding:16px 24px;}
+.jbs-brand small {font-size:9px;color:#e9c27d;}
+.jbs-brand strong {font-size:20px;line-height:1.3;}
+.jbs-brand span {font-size:10px;}
+.jbs-header-actions .jbs-outline {background:#ffffff10;color:#fff;border-color:#ffffff50;min-height:40px;}
+.jbs-version-chip {font-size:10px;color:#d2dce8;padding:4px 8px;border:1px solid #ffffff30;border-radius:20px;white-space:nowrap;}
+.jbs-app-content {width:min(100%,1060px);padding:28px 28px 36px;}
+.jbs-panel,.jbs-welcome-card,.jbs-detail-hero,.jbs-message-shell,.jbs-explore-hero {border-radius:18px;box-shadow:0 3px 10px #17263a03;border-color:#dce2e9;margin-bottom:22px;padding:24px;}
+.jbs-welcome-card {background:#e7edf3;border:0;padding:30px;position:relative;overflow:hidden;}
+.jbs-welcome-card h1 {font-size:36px;letter-spacing:-.05em;line-height:1.15;}
+.jbs-welcome-card p {max-width:360px;line-height:1.65;color:#4c6077;}
+.jbs-welcome-card .jbs-eyebrow {color:#617084;font-size:10px;letter-spacing:.13em;}
+.jbs-primary {min-height:44px;box-shadow:none;border-radius:10px;}
+.jbs-outline {min-height:44px;border-radius:10px;}
+.jbs-section-title h1 {font-size:30px;letter-spacing:-.04em;}
+.jbs-section-title h2 {letter-spacing:-.02em;}
+.jbs-section-title p {font-size:13px;margin-top:6px;}
+.jbs-stat-grid {gap:14px;margin-bottom:20px;}
+.jbs-stat-grid button {background:#fff;box-shadow:none;border:1px solid #dce2e9;border-radius:14px;min-height:92px;padding:16px 20px;text-align:left;align-items:flex-start;}
+.jbs-stat-grid strong {color:#1c354f;font-size:30px;}
+.jbs-stat-grid span {font-size:12px;color:#5b6b7e;}
+.jbs-attention {display:flex;flex-direction:column;gap:0;border:1px solid #e5d3af;border-radius:16px;background:#fffaf0;padding:16px 20px;margin-bottom:22px;}
+.jbs-attention>span {font-size:10px;letter-spacing:.12em;font-weight:800;color:#8b6018;margin-bottom:4px;}
+.jbs-attention button {text-align:left;border:0;background:none;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;color:#443a27;min-height:44px;font-size:13px;}
+.jbs-attention button>span {font-size:12px;color:#805b25;white-space:nowrap;}
+.jbs-design-grid {display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0;}
+.jbs-design-card {padding:0;text-align:left;color:#182b42;border:1px solid #d9e1e8;border-radius:18px;overflow:hidden;background:#fff;transition:transform .18s,box-shadow .18s;min-width:0;}
+.jbs-design-card:hover {transform:translateY(-3px);box-shadow:0 12px 25px #17263a10;}
+.jbs-design-card>div:last-child {padding:20px 22px;}
+.jbs-design-card>div:last-child>span {font-size:9px;font-weight:800;letter-spacing:.12em;color:#657589;}
+.jbs-design-card h3 {font-size:26px;letter-spacing:-.04em;line-height:1.25;margin:7px 0;}
+.jbs-design-card p {font-size:13px;line-height:1.6;color:#617084;margin-bottom:14px;}
+.jbs-design-card b {font-size:12px;color:#a52534;}
+.jbs-design-art {height:190px;background:#e5ece6;overflow:hidden;pointer-events:none;}
+.jbs-design-art svg {width:100%;height:100%;max-height:none;pointer-events:none;touch-action:auto;}
+.jbs-paint-art {height:190px;background:#e9e2d7;display:flex;align-items:center;justify-content:center;gap:16px;position:relative;}
+.jbs-paint-art i {height:88px;width:64px;transform:rotate(-10deg);border:6px solid #fff;border-bottom-width:20px;border-radius:3px;background:#3f576c;box-shadow:0 6px 14px #513e2d22;}
+.jbs-paint-art i:nth-child(2) {background:#a3af9a;transform:translateY(-8px) rotate(4deg);}
+.jbs-paint-art i:nth-child(3) {background:#c9aa83;transform:rotate(13deg);}
+.jbs-paint-art>span {position:absolute;bottom:17px;font-size:9px;letter-spacing:.15em;color:#5c625c;font-weight:800;}
+.jbs-action-grid {grid-template-columns:repeat(3,1fr);gap:12px;}
+.jbs-action-grid button {padding:18px 12px;border-radius:14px;box-shadow:none;min-height:100px;}
+.jbs-action-grid button>span {font-size:24px;color:#274967;}
+.jbs-record-card {padding:18px 0;gap:14px;min-height:90px;}
+.jbs-record-copy {min-width:0;}
+.jbs-record-copy b {overflow-wrap:anywhere;line-height:1.4;}
+.jbs-record-icon {width:64px;height:60px;flex:0 0 64px;overflow:hidden;background:#edf1f6;border-radius:10px;}
+.jbs-record-icon img {width:100%;height:100%;object-fit:cover;}
+.jbs-record-value {max-width:110px;text-align:right;white-space:normal;line-height:1.5;}
+.jbs-segmented {display:flex;overflow:auto;gap:6px;padding:5px;background:#e7ebf0;border-radius:12px;margin:16px 0 12px;}
+.jbs-segmented button {min-height:44px;white-space:nowrap;flex:1;border-radius:8px;box-shadow:none;}
+.jbs-segmented button.active {background:#fff;color:#182b42;box-shadow:0 2px 6px #17263a14;}
+.jbs-search {margin:16px 0 0;min-height:48px;border-radius:10px;background:#fff;}
+.jbs-search input {font-size:14px;min-width:0;}
+.jbs-status-filter {display:flex;align-items:center;justify-content:flex-end;gap:10px;font-size:12px;color:#617084;}
+.jbs-status-filter select {min-height:42px;border:1px solid #dce2e9;border-radius:9px;background:#fff;padding:6px 30px 6px 10px;color:#17263a;}
+.jbs-list-empty {padding:24px 6px;font-size:14px;line-height:1.7;color:#617084;}
+.jbs-message-shell {padding:0;overflow:hidden;}
+.jbs-message-heading {padding:22px;border-bottom:1px solid #dce2e9;justify-content:flex-start;gap:14px;}
+.jbs-message-heading h1 {font-size:24px;letter-spacing:-.04em;}
+.jbs-message-heading p {font-size:12px;}
+.jbs-team-avatar {display:grid;place-items:center;width:52px;height:52px;flex-shrink:0;border-radius:16px;background:#1d354e;color:#fff;font-size:20px;font-weight:850;}
+.jbs-thread {height:clamp(280px,52dvh,560px);max-height:none;background:#f1f4f7;padding:24px;gap:16px;}
+.jbs-message-day {align-self:center;text-align:center;font-size:10px;font-weight:700;color:#6d798b;background:#e4e9ef;padding:4px 12px;border-radius:15px;margin:10px 0;}
+.jbs-message>div {border-radius:15px;padding:13px 16px;box-shadow:0 2px 6px #17263a04;}
+.jbs-message.mine>div {background:#203e5b;color:#fff;}
+.jbs-message.mine p {color:#fff;}
+.jbs-message.mine .jbs-sender,.jbs-message.mine time,.jbs-message.mine em {color:#cad7e6;}
+.jbs-message-composer {padding:16px 20px 8px;align-items:end;margin:0;background:#fff;}
+.jbs-message-composer textarea {min-height:60px;max-height:160px;background:#f8fafc;font-size:15px;border-radius:12px;}
+.jbs-composer-hint {padding:0 20px 14px;font-size:10px;color:#748094;}
+.jbs-composer-hint>span {float:right;}
+.jbs-message-error {margin:6px 20px 10px;color:#a02030;font-size:12px;}
+.jbs-tool-list {display:grid;grid-template-columns:1fr 1fr;gap:10px;background:transparent;border:0;box-shadow:none;overflow:visible;}
+.jbs-tool-list>button {border:1px solid #dce2e9;border-radius:14px;background:#fff;padding:20px;min-height:105px;}
+.jbs-tool-list>button:hover {border-color:#9eadbd;background:#fafbfd;}
+.jbs-tool-group {grid-column:1/-1;font-size:17px;margin:18px 0 3px;letter-spacing:-.02em;}
+.jbs-account-card {margin-top:26px;}
+.jbs-explore-hero {background:#e6edf3;border:0;}
+.jbs-idea-art {min-height:150px;}
+.jbs-gallery-note {background:#eaf0f4;}
+.jbs-toast {z-index:500;bottom:calc(88px + env(safe-area-inset-bottom));font-size:13px;}
+.jbs-sync-warning {padding:14px 16px;background:#fff3db;border:1px solid #e6d3ae;border-radius:10px;margin-bottom:16px;font-size:12px;color:#745018;}
+.jbs-sync-warning button {border:0;background:transparent;text-decoration:underline;min-height:32px;color:inherit;font-weight:800;}
+/* Owner customer workspace is a focused panel, with persistent form state. */
+.jbs-owner-launcher {background:#bd2938;border-radius:12px;box-shadow:0 6px 22px #17263a25;}
+.jbs-owner-drawer {width:min(820px,100%);}
+.jbs-owner-drawer>header {margin:0;background:#17263a;border-bottom:3px solid #bd2938;}
+.jbs-owner-drawer>header h2 {letter-spacing:-.03em;}
+.jbs-owner-overview {display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.jbs-owner-overview>div {border:1px solid #dce2e9;background:#fff;border-radius:12px;padding:16px;display:grid;gap:3px;}
+.jbs-owner-overview strong {font-size:28px;letter-spacing:-.04em;}
+.jbs-owner-overview span {font-size:11px;color:#617084;}
+.jbs-owner-planning {background:#e8eef4;border-color:#d3dde7;}
+.jbs-owner-planning button {color:#203e5b;border-color:#c4d2e0;min-height:44px;}
+.jbs-owner-planning small {color:#52697f;}
+.jbs-owner-tabs {position:static;display:flex;width:auto;transform:none;background:#e8edf3;border-radius:10px;overflow:auto;padding:5px;margin:20px 0 12px;gap:4px;box-shadow:none;}
+.jbs-owner-tabs button {padding:10px 13px;color:#617084;background:none;border:0;border-radius:7px;white-space:nowrap;font-size:12px;min-height:44px;flex:1;}
+.jbs-owner-tabs button[aria-current=page] {background:#fff;color:#17263a;font-weight:800;box-shadow:0 2px 5px #17263a10;}
+.jbs-owner-section {border-radius:14px;}
+.jbs-owner-stage-grid button {min-height:60px;}
+.jbs-owner-stage-grid button.active {background:#e8eef5;border-color:#517392;color:#1c3c5b;}
+/* Visual builders remain in view while the choices change. */
+.jbs-builder-modal {border-radius:20px;}
+.jbs-deck-toolbar button {min-height:44px;border-color:#cbd7e2;color:#244663;border-radius:8px;}
+.jbs-deck-toolbar button[aria-pressed=true] {background:#244663;}
+.jbs-builder-budget {color:#fff;}
+.jbs-builder-preview-content .jbs-builder-budget {padding:13px 15px;border-radius:12px;background:#1d354e;}
+.jbs-builder-budget strong {color:#fff;}
+.jbs-paint-swatches {gap:10px;flex-wrap:wrap;}
+.jbs-paint-swatches button {width:44px;height:44px;border-width:4px;}
+.jbs-paint-controls input,.jbs-paint-controls select {min-height:44px;}
+.jbs-paint-upload {background:#f0f4f8;border-color:#9eafbf;}
+.jbs-release-banner {position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(550px,calc(100% - 28px));z-index:450;padding:14px 18px;background:#17263a;color:#fff;border:1px solid #627b97;border-radius:14px;box-shadow:0 12px 32px #17263a33;font-size:12px;}
+.jbs-release-banner p {color:#d8e2ec;margin:4px 0 8px;font-size:12px;}
+.jbs-release-banner button {min-height:40px;border:1px solid #ffffff60;background:#ffffff15;color:#fff;border-radius:8px;margin-right:8px;padding:7px 12px;}
+.jbs-release-list {display:grid;gap:16px;padding-left:20px;line-height:1.65;font-size:14px;color:#4b6077;}
+@media(min-width:1050px) {
+  .jbs-customer-app {padding-left:200px;padding-bottom:0;}
+  .jbs-app-header {padding:20px 32px;min-height:94px;}
+  .jbs-bottom-nav {position:fixed;inset:0 auto 0 0;width:200px;transform:none;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;background:#122236;border:0;border-radius:0;padding:134px 14px 24px;gap:7px;box-shadow:none;}
+  .jbs-bottom-nav:before {content:"JB’S / WORKSPACE";position:absolute;top:36px;left:23px;color:#e5c38a;letter-spacing:.08em;font-size:11px;font-weight:800;}
+  .jbs-bottom-nav button {display:flex;justify-content:flex-start;align-items:center;gap:14px;text-align:left;min-height:50px;padding:12px 16px;border-radius:10px;color:#b8c7d8;}
+  .jbs-bottom-nav button>small {font-size:13px;}
+  .jbs-bottom-nav button>span {width:22px;font-size:23px;}
+  .jbs-bottom-nav button.active {background:#2a415b;color:#fff;}
+  .jbs-bottom-nav button.active:before {display:none;}
+  .jbs-bottom-nav .jbs-nav-badge {top:14px;right:10px;}
+  .jbs-customer-app:has(.jbs-detail-hero) {padding-left:0;}
+  .jbs-app-content {padding-top:32px;}
+  .jbs-welcome-card {min-height:182px;}
+  .jbs-toast,.jbs-release-banner {bottom:26px;}
+}
+@media(max-width:760px) {
+  .jbs-app-header {padding:12px 14px;min-height:76px;gap:6px;}
+  .jbs-brand {gap:8px;}
+  .jbs-brand img {width:34px;height:34px;}
+  .jbs-brand small {font-size:7px;white-space:normal;}
+  .jbs-brand strong {font-size:16px;}
+  .jbs-header-actions {gap:5px;margin-left:0;}
+  .jbs-header-actions .jbs-outline {font-size:10px;padding:7px;}
+  .jbs-version-chip {padding:3px 5px;font-size:8px;}
+  .jbs-demo-pill {display:none;}
+  .jbs-app-content {padding:20px 14px 28px;}
+  .jbs-panel,.jbs-welcome-card,.jbs-detail-hero,.jbs-message-shell,.jbs-explore-hero {padding:20px;margin-bottom:18px;border-radius:15px;}
+  .jbs-welcome-card h1 {font-size:30px;}
+  .jbs-welcome-card {display:block;}
+  .jbs-welcome-card .jbs-primary {margin-top:16px;}
+  .jbs-stat-grid {gap:8px;}
+  .jbs-stat-grid button {padding:13px 10px;}
+  .jbs-stat-grid strong {font-size:26px;}
+  .jbs-stat-grid span {font-size:10px;}
+  .jbs-attention {padding:13px 15px;}
+  .jbs-attention button {font-size:12px;flex-wrap:wrap;gap:2px;}
+  .jbs-attention button>span {font-size:10px;}
+  .jbs-design-grid {gap:12px;}
+  .jbs-design-art,.jbs-paint-art {height:126px;}
+  .jbs-design-card>div:last-child {padding:14px;}
+  .jbs-design-card>div:last-child>span {font-size:8px;letter-spacing:.06em;}
+  .jbs-design-card h3 {font-size:22px;}
+  .jbs-design-card p {font-size:11px;}
+  .jbs-design-card b {font-size:11px;}
+  .jbs-paint-art {gap:3px;}
+  .jbs-paint-art i {height:64px;width:36px;border-width:3px;border-bottom-width:13px;}
+  .jbs-paint-art>span {font-size:6px;letter-spacing:.06em;bottom:11px;}
+  .jbs-action-grid {gap:8px;}
+  .jbs-action-grid button {padding:14px 7px;}
+  .jbs-action-grid button b {font-size:11px;}
+  .jbs-action-grid button small {font-size:9px;}
+  .jbs-section-title h1 {font-size:26px;}
+  .jbs-record-card {gap:10px;}
+  .jbs-record-icon {width:46px;height:50px;flex-basis:46px;}
+  .jbs-record-value {font-size:10px;max-width:77px;}
+  .jbs-record-copy b {font-size:13px;}
+  .jbs-segmented {gap:3px;}
+  .jbs-segmented button {padding:8px;font-size:11px;}
+  .jbs-message-shell {padding:0;}
+  .jbs-message-heading {padding:18px 15px;}
+  .jbs-message-heading h1 {font-size:21px;}
+  .jbs-team-avatar {width:40px;height:40px;border-radius:12px;font-size:17px;}
+  .jbs-thread {padding:16px 12px;height:max(240px,calc(100dvh - 370px));}
+  .jbs-message>div {padding:11px 13px;}
+  .jbs-message-composer {padding:12px 12px 8px;}
+  .jbs-composer-hint {padding:0 12px 12px;}
+  .jbs-composer-hint>span {display:none;}
+  .jbs-tool-list {grid-template-columns:1fr;gap:9px;}
+  .jbs-tool-list>button {min-height:90px;padding:18px;}
+  .jbs-bottom-nav {border-radius:0;bottom:0;width:100%;box-shadow:0 -4px 18px #17263a08;}
+  .jbs-bottom-nav button {min-height:58px;}
+  .jbs-bottom-nav button>small {font-size:10px;}
+  .jbs-owner-overview {gap:8px;}
+  .jbs-owner-overview>div {padding:12px;}
+  .jbs-owner-overview strong {font-size:25px;}
+  .jbs-owner-tabs {border-radius:10px;margin-top:18px;}
+  .jbs-owner-tabs button {font-size:11px;padding:8px 10px;}
+  .jbs-owner-launcher {right:12px;bottom:calc(96px + env(safe-area-inset-bottom));width:auto;min-height:44px;padding:10px 12px;border-radius:12px;}
+  .jbs-owner-launcher>b {position:static;width:auto;height:auto;clip:auto;white-space:normal;font-size:11px;}
+  .jbs-owner-launcher>span {font-size:14px;}
+  .jbs-deck-toolbar button {min-height:40px;font-size:10px;padding:6px 8px;}
+  .jbs-builder-preview-content .jbs-builder-budget {display:flex!important;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:8px 10px;margin:0 0 7px;}
+  .jbs-builder-budget .jbs-eyebrow {font-size:8px;}
+  .jbs-builder-preview-content .jbs-builder-budget strong {font-size:16px;}
+  .jbs-builder-budget small {flex-basis:100%;font-size:8px;}
+  .jbs-deck-scene {max-height:190px;}
+  .jbs-builder-preview-panel {position:static;}
+  .jbs-paint-swatches button {width:44px;height:44px;}
+  body:has(.owner-nav)>main>header {padding:18px 16px;gap:10px;align-items:flex-start;}
+  body:has(.owner-nav)>main>header h1 {font-size:25px;}
+  body:has(.owner-nav)>main {padding-top:18px;}
+  .stats button,.stats article {padding:17px;}
+}
+@media(prefers-reduced-motion:reduce) {*,*:before,*:after {scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important;}}
+
+@media(max-width:760px) and (min-height:760px) {.jbs-builder-preview-panel {position:sticky;top:0;}.jbs-deck-scene {max-height:160px;}}
+
+.jbs-welcome-card h1 {color:#17263a;}
+.jbs-welcome-card:after {display:none;}
+.jbs-section-title>.jbs-link-button {white-space:nowrap;flex-shrink:0;min-width:44px;}
+@media(max-width:760px) {.jbs-bottom-nav {left:0;right:0;transform:none;}}
+
+.jbs-modal>header {display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;align-items:center;}
+.jbs-modal>header>button {grid-column:1;grid-row:1;}
+.jbs-modal>header>div {grid-column:2;min-width:0;}
+.jbs-modal>header h2 {overflow-wrap:anywhere;line-height:1.3;}
+@media(max-width:760px) {.jbs-modal>header h2 {font-size:18px;}}
+
+.jbs-message time,.jbs-message em {font-size:10px;line-height:1.5;}
+.jbs-message em {display:block;margin-top:3px;}
+.jbs-message-heading .jbs-eyebrow {color:#edc47a;}
+.jbs-toast {pointer-events:none;}
+@media(max-width:760px) {
+  .jbs-message-shell {height:calc(100dvh - 176px);min-height:390px;display:flex;flex-direction:column;}
+  .jbs-message-heading,.jbs-message-composer,.jbs-composer-hint,.jbs-message-error {flex-shrink:0;}
+  .jbs-thread {flex:1;height:auto;min-height:0;}
+}
+.auth-card {min-width:0;max-width:100%;}
+.install-options {grid-template-columns:repeat(2,minmax(0,1fr));}
+.install.platform span {min-width:0;}
+.install.platform small {white-space:normal;}
+.jbs-record-card {grid-template-columns:64px minmax(0,1fr) auto;}
+@media(max-width:760px) {.jbs-record-card {grid-template-columns:46px minmax(0,1fr) auto;}}

@@ -1,3 +1,5 @@
+import './release-status.js';
+import { workspaceGroups, isCompleted, messageDay, documentUrl } from './workspace-model.js';
 import { renderDeck } from './deck-visual.js';
 import { paintDefaults, paintMarkup, mountPaint } from './paint-visual.js';
 
@@ -26,7 +28,7 @@ const NAV_ITEMS = [
   ["projects", "▤", "Projects"],
   ["messages", "✉", "Messages"],
   ["explore", "◈", "Explore"],
-  ["more", "•••", "More"],
+  ["more", "⊞", "Tools"],
 ];
 
 const IDEAS = [
@@ -168,6 +170,17 @@ const state = {
   ownerDraft: {},
   ownerOpen: false,
   ownerLoading: false,
+  projectTab: 'all',
+  projectSearch: '',
+  projectStatus: 'all',
+  messageDraft: '',
+  messageSending: false,
+  messageError: '',
+  scope: 0,
+  authSubscription: null,
+  syncWarning: '',
+  ownerSection: 'timeline',
+
 };
 
 const client = () => window.__JBS_SUPABASE;
@@ -184,12 +197,36 @@ function isInstalled() {
 
 function setToast(message) {
   state.toast = message;
-  render();
+  document.querySelector('#jbs-live-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'jbs-live-toast';
+  toast.className = 'jbs-toast';
+  toast.setAttribute('role', 'status');
+  toast.textContent = message;
+  document.body.append(toast);
   window.clearTimeout(setToast.timer);
-  setToast.timer = window.setTimeout(() => {
-    state.toast = "";
-    render();
-  }, 3200);
+  setToast.timer = window.setTimeout(() => { state.toast = ''; toast.remove(); }, 4500);
+}
+
+function resetCustomerScope() {
+  state.scope++;
+  window.clearInterval(state.poller);
+  window.clearTimeout(subscribeRealtime.timer);
+  for (const channel of state.realtime) client()?.removeChannel(channel);
+  state.realtime = [];
+  for (const key of ['records','requests','messages','reads','events','changeOrders','changeOrderResponses','plans','quoteResponses']) state[key] = [];
+  for (const key of ['quoteDraft','planDraft','builderDraft','signDraft','changeDraft','photoDraft','analyzerDraft']) state[key] = {};
+  state.paintDraft = paintDefaults();
+  state.messageDraft = '';
+  state.messageSending = false;
+  state.messageError = '';
+  state.loading = false;
+  state.error = '';
+  state.syncWarning = '';
+  state.projectSearch = '';
+  state.projectTab = 'all';
+  state.projectStatus = 'all';
+  state.workspace = {maintenance:{}, saved_colors:[], saved_ideas:[], contact_preference:'Text message'};
 }
 
 function shellRoot() {
@@ -205,6 +242,7 @@ function shellRoot() {
 
 function startDemo() {
   if (state.owner && !state.demo) state.previewOwnerSession = state.session;
+  resetCustomerScope();
   state.ownerOpen = false;
   if (state.ownerRoot) state.ownerRoot.hidden = true;
   state.modal = null;
@@ -236,21 +274,30 @@ async function bootCustomer(session) {
     state.session = session;
     return;
   }
+  resetCustomerScope();
+  state.modal = null;
+  state.recordId = null;
+  state.view = "home";
   if (OWNER_EMAILS.has(email)) {
     state.demo = false;
     if (state.ownerRoot) state.ownerRoot.hidden = false;
     state.owner = true;
     state.session = session;
-    mountOwnerTools();
+    state.root?.remove();
+    state.root = null;
+    await mountOwnerTools();
     return;
   }
   state.demo = false;
   state.owner = false;
+  if (state.ownerRoot) state.ownerRoot.hidden = true;
   state.session = session;
   state.root = shellRoot();
   bindRoot();
   render();
+  const scope = state.scope;
   await loadCustomerData(true);
+  if (scope !== state.scope) return;
   applyOpenIntent();
   subscribeRealtime();
 }
@@ -261,6 +308,7 @@ function applyOpenIntent() {
   const recordId = params.get("record");
   if (open === "messages") state.view = "messages";
   if (open === "projects" || open === "quotes") state.view = "projects";
+  if (open === "quotes") state.projectTab = "quotes";
   if (recordId && state.records.some((record) => record.id === recordId)) state.recordId = recordId;
   if (open || recordId) {
     params.delete("open");
@@ -286,31 +334,37 @@ function enhanceEntry() {
 
 async function detectSession() {
   if (!client() || state.demo) return;
+  if (!state.authSubscription) {
+    state.authSubscription = client().auth.onAuthStateChange((_event, nextSession) => {
+      if (state.demo) return;
+      // Leave the auth callback before starting any additional client requests.
+      queueMicrotask(() => {
+        if (nextSession) bootCustomer(nextSession).catch(() => setToast('Could not load your workspace. Please refresh.'));
+        else {
+          resetCustomerScope();
+          state.session = null;
+          state.owner = false;
+          state.root?.remove();
+          state.root = null;
+          state.ownerRoot?.remove();
+          state.ownerRoot = null;
+          state.ownerRecords = []; state.ownerEvents = []; state.ownerOrders = [];
+          enhanceEntry();
+        }
+      });
+    }).data.subscription;
+  }
   const { data } = await client().auth.getSession();
-  const session = data?.session;
-  if (session) await bootCustomer(session);
+  if (data?.session) await bootCustomer(data.session);
   else enhanceEntry();
-  client().auth.onAuthStateChange((_event, nextSession) => {
-    if (state.demo) return;
-    if (nextSession) bootCustomer(nextSession);
-    else {
-      state.session = null;
-      state.owner = false;
-      state.root?.remove();
-      state.root = null;
-      enhanceEntry();
-    }
-  });
 }
 
-window.addEventListener("jbs:customer-ready", (event) => {
-  if (state.demo) return;
-  if (window.__JBS_SESSION) bootCustomer(window.__JBS_SESSION);
-  else if (event.detail?.userId) detectSession();
+window.addEventListener("jbs:customer-ready", () => {
+  if (!state.demo) detectSession().catch(() => setToast('Could not connect. Please refresh.'));
 });
 
 function waitForApp() {
-  if (client()) detectSession();
+  if (client()) detectSession().catch(() => setToast("Could not connect. Please refresh."));
   else window.setTimeout(waitForApp, 120);
 }
 
@@ -320,7 +374,8 @@ document.readyState === "loading"
 window.setInterval(enhanceEntry, 800);
 
 async function loadCustomerData(showLoading = false) {
-  if (state.demo || !state.session || !client()) return;
+  if (state.demo || state.owner || !state.session || !client()) return;
+  const scope = state.scope;
   if (showLoading) {
     state.loading = true;
     render();
@@ -337,7 +392,10 @@ async function loadCustomerData(showLoading = false) {
     ["quoteResponses", client().from("quote_responses").select("*").order("updated_at", { ascending: false })],
     ["workspace", client().from("customer_workspace").select("*").eq("user_id", state.session.user.id).maybeSingle()],
   ];
-  const results = await Promise.all(queries.map(async ([key, query]) => [key, await query]));
+  const results = await Promise.all(queries.map(async ([key, query]) => {
+    try { return [key, await query]; } catch (error) { return [key, {error}]; }
+  }));
+  if (scope !== state.scope) return;
   const failures = [];
   for (const [key, result] of results) {
     if (result.error) {
@@ -352,8 +410,10 @@ async function loadCustomerData(showLoading = false) {
   }
   state.loading = false;
   state.error = failures.length && failures.length === results.length ? "We could not refresh your customer information." : "";
-  render();
-  if (state.view === "messages") markMessagesRead();
+  state.syncWarning = failures.length && !state.error ? 'Some updates could not be loaded. Your last available information is shown.' : '';
+  const editing = state.modal || state.root?.contains(document.activeElement) && document.activeElement.matches('input, textarea, select');
+  if (showLoading || !editing) render();
+  if (state.view === 'messages' && !state.modal) markMessagesRead();
 }
 
 function subscribeRealtime() {
@@ -394,7 +454,7 @@ async function mountOwnerTools() {
     document.body.append(root);
     root.addEventListener("click", handleOwnerClick);
     root.addEventListener("input", handleOwnerInput);
-    root.addEventListener("change", handleOwnerChange);
+    root.addEventListener("change", event=>handleOwnerChange(event).catch(error=>setToast(error.message||"Could not load the photo. Please try again.")));
     state.ownerRoot = root;
   }
   renderOwnerTools();
@@ -403,6 +463,7 @@ async function mountOwnerTools() {
 
 async function loadOwnerData() {
   if (!state.owner || !client()) return;
+  const scope = state.scope;
   state.ownerLoading = true;
   renderOwnerTools();
   const [recordsResult, eventsResult, ordersResult] = await Promise.all([
@@ -410,11 +471,12 @@ async function loadOwnerData() {
     client().from("project_events").select("*").order("event_date", { ascending: false }),
     client().from("change_orders").select("*").order("created_at", { ascending: false }),
   ]);
+  if (scope !== state.scope || !state.owner) return;
   state.ownerLoading = false;
   const firstError = recordsResult.error || eventsResult.error || ordersResult.error;
   if (firstError) {
     console.error("[JBs owner upgrade]", firstError);
-    state.ownerDraft.error = "The upgrade data could not be refreshed yet.";
+    state.ownerDraft.error = "Customer information could not be refreshed. Try again when your connection is available.";
   } else {
     state.ownerDraft.error = "";
     state.ownerRecords = (recordsResult.data || []).filter((record) => Boolean(String(record.customer_email || "").trim()));
@@ -429,6 +491,10 @@ async function loadOwnerData() {
 
 function renderOwnerTools() {
   if (!state.ownerRoot) return;
+  const top = state.ownerRoot.querySelector('.jbs-owner-drawer')?.scrollTop || 0;
+  const key = `${state.ownerRecordId}:${state.ownerSection}`;
+  const sameSection = state.ownerRoot.dataset.section === key;
+  state.ownerRoot.dataset.section = key;
   const record = ownerSelectedRecord();
   const recordEvents = record ? state.ownerEvents.filter((event) => event.record_id === record.id) : [];
   const recordOrders = record ? state.ownerOrders.filter((order) => order.record_id === record.id) : [];
@@ -437,19 +503,20 @@ function renderOwnerTools() {
     ...recordOrders.filter((order) => order.requested_by_role === "customer"),
   ].sort((a, b) => new Date(b.event_date || b.created_at || 0) - new Date(a.event_date || a.created_at || 0));
   state.ownerRoot.innerHTML = `
-    <button class="jbs-owner-launcher" data-owner-action="toggle" aria-expanded="${state.ownerOpen}" aria-label="${state.ownerOpen ? "Close" : "Open"} Customer Upgrade Center" title="Customer Upgrade Center">
-      <span aria-hidden="true">◆</span><b>Customer Upgrade Center</b>
+    <button class="jbs-owner-launcher" data-owner-action="toggle" aria-expanded="${state.ownerOpen}" aria-label="${state.ownerOpen ? "Close" : "Open"} Customer workspace" title="Customer workspace">
+      <span aria-hidden="true">◆</span><b>Customer workspace</b>
       ${customerItems.length ? `<i>${customerItems.length}</i>` : ""}
     </button>
     ${state.ownerOpen ? `
       <div class="jbs-owner-backdrop" data-owner-action="backdrop">
-        <aside class="jbs-owner-drawer" role="dialog" aria-modal="true" aria-label="Customer Upgrade Center">
+        <aside class="jbs-owner-drawer" role="dialog" aria-modal="true" aria-label="Customer workspace">
           <header>
-            <div><small>OWNER TOOLS · VERSION ${APP_VERSION}</small><h2>Customer Upgrade Center</h2></div>
+            <div><small>OWNER TOOLS · VERSION ${APP_VERSION}</small><h2>Customer workspace</h2></div>
             <button data-owner-action="close" aria-label="Close">×</button>
           </header>
           <div class="jbs-owner-body">
-            <div class="jbs-owner-planning"><button data-owner-action="preview-guest">Preview Customer Side</button><button data-owner-action="preview-builder">Live Deck Builder</button><button data-owner-action="preview-paint">Photo Paint Visualizer</button><small>Try the customer tools and return here without signing out.</small></div>
+            <div class="jbs-owner-overview"><div><strong>${state.ownerRecords.filter(r=>r.record_type!=='quote'&&!isCompleted(r)).length}</strong><span>Active projects</span></div><div><strong>${state.ownerRecords.filter(r=>r.record_type==='quote').length}</strong><span>Customer quotes</span></div><div><strong>${state.ownerOrders.filter(o=>o.status==='requested').length}</strong><span>Change requests</span></div></div>
+            <div class="jbs-owner-planning"><button data-owner-action="preview-guest">Preview Customer Side</button><button data-owner-action="preview-builder">Live Deck Builder</button><button data-owner-action="preview-paint">Photo Paint Visualizer</button><small>Customer preview uses sample projects. Your owner account stays signed in.</small></div>
             ${state.ownerLoading ? `<div class="jbs-owner-loading"><div class="jbs-spinner"></div><p>Loading customer projects…</p></div>` : ""}
             ${state.ownerDraft.error ? `<div class="jbs-owner-alert">${escapeHtml(state.ownerDraft.error)} <button data-owner-action="refresh">Try again</button></div>` : ""}
             ${!state.ownerLoading && !state.ownerRecords.length ? `<div class="jbs-owner-empty"><h3>No customer records yet</h3><p>Add a customer record in the main owner dashboard, then manage its timeline here.</p></div>` : ""}
@@ -459,6 +526,8 @@ function renderOwnerTools() {
       </div>
     ` : ""}
   `;
+  const drawer=state.ownerRoot.querySelector('.jbs-owner-drawer');
+  if(drawer)drawer.scrollTop=sameSection?top:0;
 }
 
 function renderOwnerRecord(record, events, orders, customerItems) {
@@ -473,7 +542,8 @@ function renderOwnerRecord(record, events, orders, customerItems) {
       <div><small>Customer</small><strong>${escapeHtml(record.customer_name || "Customer")}</strong><span>${escapeHtml(record.customer_email || "")}</span></div>
       <div><small>Current stage</small><strong>${escapeHtml(TIMELINE_STAGES.find((item) => item.id === stage)?.label || record.status || "Not set")}</strong><span>${escapeHtml(record.location || "Location not listed")}</span></div>
     </section>
-    <section class="jbs-owner-section">
+    <nav class="jbs-owner-tabs" aria-label="Customer project tools">${[['timeline','Timeline'],['schedule','Schedule'],['progress','Photos'],['changes','Changes'],['input','Customer input']].map(([key,label])=>`<button data-owner-action="section" data-section="${key}" aria-current="${state.ownerSection===key?'page':'false'}">${label}</button>`).join('')}</nav>
+    <section class="jbs-owner-section" ${state.ownerSection==='timeline'?'':'hidden'}>
       <div class="jbs-owner-section-title"><div><small>PROJECT TIMELINE</small><h3>Move the project forward</h3></div><span>${events.length} updates</span></div>
       <div class="jbs-owner-stage-grid">
         ${TIMELINE_STAGES.map((item, index) => `<button class="${item.id === stage ? "active" : ""}" data-owner-action="choose-stage" data-stage="${item.id}"><b>${index + 1}</b><span>${escapeHtml(item.label)}</span></button>`).join("")}
@@ -481,7 +551,7 @@ function renderOwnerRecord(record, events, orders, customerItems) {
       <label>Update note<textarea data-owner-field="stageNote" placeholder="What changed?">${escapeHtml(state.ownerDraft.stageNote || "")}</textarea></label>
       <button class="jbs-owner-primary" data-owner-action="save-stage">Publish timeline stage</button>
     </section>
-    <section class="jbs-owner-section">
+    <section class="jbs-owner-section" ${state.ownerSection==='schedule'?'':'hidden'}>
       <div class="jbs-owner-section-title"><div><small>SCHEDULE</small><h3>Dates & customer notice</h3></div></div>
       <div class="jbs-owner-two-col">
         <label>Start<input type="datetime-local" data-owner-field="scheduledStart" value="${escapeHtml(state.ownerDraft.scheduledStart ?? localDateTime(record.scheduled_start))}"></label>
@@ -490,7 +560,7 @@ function renderOwnerRecord(record, events, orders, customerItems) {
       <label>Schedule message<textarea data-owner-field="scheduleNote" placeholder="Example: Staining moved to Wednesday because of rain.">${escapeHtml(state.ownerDraft.scheduleNote || "")}</textarea></label>
       <button class="jbs-owner-primary" data-owner-action="save-schedule">Save schedule & notify customer</button>
     </section>
-    <section class="jbs-owner-section">
+    <section class="jbs-owner-section" ${state.ownerSection==='progress'?'':'hidden'}>
       <div class="jbs-owner-section-title"><div><small>PROGRESS</small><h3>Photo or quick update</h3></div></div>
       <label>Update title<input data-owner-field="progressTitle" maxlength="180" placeholder="Day 2 progress" value="${escapeHtml(state.ownerDraft.progressTitle || "")}"></label>
       <label>Details<textarea data-owner-field="progressNote" maxlength="1200" placeholder="Tell the customer what was completed.">${escapeHtml(state.ownerDraft.progressNote || "")}</textarea></label>
@@ -498,7 +568,7 @@ function renderOwnerRecord(record, events, orders, customerItems) {
       ${state.ownerDraft.progressPhoto ? `<img class="jbs-owner-photo-preview" src="${safeImageSource(state.ownerDraft.progressPhoto.data)}" alt="Progress preview">` : ""}
       <button class="jbs-owner-primary" data-owner-action="publish-progress">Publish progress update</button>
     </section>
-    <section class="jbs-owner-section">
+    <section class="jbs-owner-section" ${state.ownerSection==='changes'?'':'hidden'}>
       <div class="jbs-owner-section-title"><div><small>CHANGE ORDERS</small><h3>Price a project change</h3></div><span>${orders.length}</span></div>
       <label>Title<input data-owner-field="orderTitle" maxlength="200" placeholder="Additional stair-board repair" value="${escapeHtml(state.ownerDraft.orderTitle || "")}"></label>
       <label>Description<textarea data-owner-field="orderDescription" maxlength="3000">${escapeHtml(state.ownerDraft.orderDescription || "")}</textarea></label>
@@ -508,7 +578,7 @@ function renderOwnerRecord(record, events, orders, customerItems) {
         ${orders.map(renderOwnerOrder).join("") || `<p class="jbs-muted">No change orders for this project.</p>`}
       </div>
     </section>
-    <section class="jbs-owner-section">
+    <section class="jbs-owner-section" ${state.ownerSection==='input'?'':'hidden'}>
       <div class="jbs-owner-section-title"><div><small>CUSTOMER INPUT</small><h3>Photos & requests</h3></div><span>${customerItems.length}</span></div>
       <div class="jbs-owner-customer-items">
         ${customerItems.map((item) => item.event_type ? `
@@ -522,6 +592,7 @@ function renderOwnerRecord(record, events, orders, customerItems) {
 }
 
 function renderOwnerOrder(order) {
+  order = {...order,...state.ownerDraft.orderEdits?.[order.id]};
   return `
     <article data-owner-order-card="${escapeHtml(order.id)}">
       <div><b>${escapeHtml(order.title)}</b><small>${escapeHtml(order.requested_by_role === "customer" ? "Customer request" : "Owner change order")}</small></div>
@@ -540,6 +611,12 @@ function renderOwnerOrder(order) {
 function handleOwnerInput(event) {
   const field = event.target.dataset.ownerField;
   if (field) state.ownerDraft[field] = event.target.value;
+  const order = event.target.closest('[data-owner-order-card]');
+  if(order && event.target.matches('[data-owner-order-amount],[data-owner-order-status]')){
+    state.ownerDraft.orderEdits ||= {};
+    const key=event.target.matches('[data-owner-order-amount]')?'amount':'status';
+    state.ownerDraft.orderEdits[order.dataset.ownerOrderCard] = {...state.ownerDraft.orderEdits[order.dataset.ownerOrderCard],[key]:event.target.value};
+  }
 }
 
 async function handleOwnerChange(event) {
@@ -567,13 +644,14 @@ async function handleOwnerClick(event) {
     else if (action === "preview-guest") { startDemo(); return; }
     else if (action === "preview-builder") { startDemo(); openBuilder(); return; }
     else if (action === "preview-paint") { startDemo(); openPaint(); return; }
-    else if (action === "refresh") return loadOwnerData();
+    else if (action === "refresh") return await loadOwnerData();
+    else if (action === "section") state.ownerSection = target.dataset.section;
     else if (action === "choose-stage") state.ownerDraft.stage = target.dataset.stage;
-    else if (action === "save-stage") return saveOwnerStage(target);
-    else if (action === "save-schedule") return saveOwnerSchedule(target);
-    else if (action === "publish-progress") return publishOwnerProgress(target);
-    else if (action === "create-order") return createOwnerOrder(target);
-    else if (action === "update-order") return updateOwnerOrder(target.dataset.id, target);
+    else if (action === "save-stage") return await saveOwnerStage(target);
+    else if (action === "save-schedule") return await saveOwnerSchedule(target);
+    else if (action === "publish-progress") return await publishOwnerProgress(target);
+    else if (action === "create-order") return await createOwnerOrder(target);
+    else if (action === "update-order") return await updateOwnerOrder(target.dataset.id, target);
     renderOwnerTools();
   } catch (error) {
     console.error("[JBs owner upgrade]", error);
@@ -617,8 +695,10 @@ async function saveOwnerStage(button) {
 async function saveOwnerSchedule(button) {
   const record = ownerSelectedRecord();
   if (!record) throw new Error("Choose a customer project first.");
-  const start = state.ownerDraft.scheduledStart ? new Date(state.ownerDraft.scheduledStart).toISOString() : null;
-  const end = state.ownerDraft.scheduledEnd ? new Date(state.ownerDraft.scheduledEnd).toISOString() : null;
+  const startValue = state.ownerDraft.scheduledStart ?? record.scheduled_start;
+  const endValue = state.ownerDraft.scheduledEnd ?? record.scheduled_end;
+  const start = startValue ? new Date(startValue).toISOString() : null;
+  const end = endValue ? new Date(endValue).toISOString() : null;
   if (start && end && new Date(end) < new Date(start)) throw new Error("The finish date must be after the start date.");
   setBusy(button, true, "Saving…");
   const { error: updateError } = await client().from("customer_records").update({ scheduled_start: start, scheduled_end: end, updated_at: new Date().toISOString() }).eq("id", record.id);
@@ -655,7 +735,7 @@ async function createOwnerOrder(button) {
   const record = ownerSelectedRecord();
   const title = clampText(state.ownerDraft.orderTitle, 200);
   const description = clampText(state.ownerDraft.orderDescription, 3000);
-  const amount = Number(state.ownerDraft.orderAmount);
+  const amount = state.ownerDraft.orderAmount?.trim() ? Number(state.ownerDraft.orderAmount) : NaN;
   if (!record || !title || !description || !Number.isFinite(amount) || amount < 0) throw new Error("Add a title, description, and valid amount.");
   setBusy(button, true, "Sending…");
   const { data, error } = await client().from("change_orders").insert({
@@ -695,28 +775,49 @@ function bindRoot() {
   state.root.dataset.bound = "true";
   state.root.addEventListener("click", handleClick);
   state.root.addEventListener("input", handleInput);
-  state.root.addEventListener("change", handleChange);
+  state.root.addEventListener("change", event => handleChange(event).catch(error=>setToast(error.message||'Could not save that change. Please try again.')));
+  state.root.addEventListener('submit', event=>{if(event.target.dataset.form==='message'){event.preventDefault();sendMessage();}});
+  state.root.addEventListener('keydown', event=>{
+    if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&event.target.dataset.field==='messageDraft'){event.preventDefault();sendMessage();}
+  });
 }
 
 function render() {
   if (!state.root) return;
+  const active = document.activeElement;
+  const field = state.root.contains(active) ? active.dataset.field : null;
+  const selection = field && ['INPUT','TEXTAREA'].includes(active.tagName) ? [active.selectionStart,active.selectionEnd] : null;
+  const scroll = ['.jbs-customer-app','.jbs-modal-body','.jbs-thread'].map(selector=>{const el=state.root.querySelector(selector);return [selector,el?.scrollTop||0,el ? el.scrollHeight-el.scrollTop-el.clientHeight<80 : true];});
+  const hadModal = Boolean(state.root.querySelector('.jbs-modal'));
+  const viewKey = `${state.view}:${state.recordId||''}`;
+  const modalKey = `${state.modal?.type||''}:${state.modal?.type==='builder'?state.builderStep:state.modal?.type==='quoteRequest'?state.quoteStep:''}`;
+  const changedView = state.root.dataset.viewKey !== viewKey;
+  const changedModal = state.root.dataset.modalKey !== modalKey;
+  state.root.dataset.viewKey = viewKey; state.root.dataset.modalKey = modalKey;
   const selected = state.recordId ? state.records.find((record) => record.id === state.recordId) : null;
   const content = selected ? renderRecordDetail(selected) : state.modal ? renderCurrentView() : renderCurrentView();
   state.root.innerHTML = `
     <div class="jbs-customer-app ${state.demo ? "is-demo" : ""}">
       ${renderHeader(selected)}
-      <main class="jbs-app-content" id="jbs-main-content">${content}</main>
+      <main class="jbs-app-content" id="jbs-main-content" tabindex="-1">${state.syncWarning?`<div class="jbs-sync-warning" role="status">${escapeHtml(state.syncWarning)} <button data-action="refresh">Retry</button></div>`:''}${content}</main>
       ${selected ? "" : renderBottomNav()}
       ${renderModal()}
-      ${state.toast ? `<div class="jbs-toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
+
     </div>
   `;
+  for (const [selector,top] of scroll) { const el=state.root.querySelector(selector); if(el)el.scrollTop=(selector==='.jbs-customer-app'&&changedView)||(selector==='.jbs-modal-body'&&changedModal)?0:top; }
+  if (field) {
+    const replacement = [...state.root.querySelectorAll('[data-field]')].find(el=>el.dataset.field===field);
+    replacement?.focus({preventScroll:true});
+    if (selection && selection[0]!==null && replacement?.setSelectionRange) { try { replacement.setSelectionRange(...selection); } catch {} }
+  }
+  if (state.modal && !hadModal) state.root.querySelector('.jbs-modal button')?.focus({preventScroll:true});
   if (state.modal?.type === "paint") mountPaint(state.root.querySelector('.jbs-modal-body'),state.paintDraft,{save:(d,preview,b)=>persistPaint(d,preview,false,b),quote:(d,preview,b)=>persistPaint(d,preview,true,b)});
   if (state.modal?.type === "quoteSign") window.setTimeout(setupSignatureCanvas, 0);
   if (state.view === "messages" && !state.modal) {
     window.setTimeout(() => {
       const thread = state.root?.querySelector(".jbs-thread");
-      if (thread) thread.scrollTop = thread.scrollHeight;
+      if (thread && scroll.find(([key])=>key==='.jbs-thread')?.[2]) thread.scrollTop = thread.scrollHeight;
       markMessagesRead();
     }, 0);
   }
@@ -730,10 +831,10 @@ function renderHeader(selected) {
         <div>
           <small>JB’S UNIVERSAL RENOVATIONS</small>
           <strong>${selected ? escapeHtml(selected.title) : pageTitle()}</strong>
-          <span>Built Tough. Fixed Right. Made to Last.</span>
+          <span>Built Tough. Fixed Right. Made to Last. · v${APP_VERSION}</span>
         </div>
       </div>
-      <div class="jbs-header-actions">
+      <div class="jbs-header-actions"><span class="jbs-version-chip">v${APP_VERSION}</span>
         ${state.demo ? '<button class="jbs-outline" data-action="sign-out">' + (state.previewOwnerSession ? 'Back to Owner' : 'Exit Demo') + '</button><span class="jbs-demo-pill">DEMO</span>' : ""}
         ${selected ? '<button class="jbs-icon-button" data-action="back-record" aria-label="Go back">‹</button>' : '<button class="jbs-icon-button" data-action="open-notifications" aria-label="Notifications">♢</button>'}
       </div>
@@ -756,7 +857,7 @@ function renderBottomNav() {
   return `
     <nav class="jbs-bottom-nav" aria-label="Customer navigation">
       ${NAV_ITEMS.map(([id, icon, label]) => `
-        <button class="${state.view === id ? "active" : ""}" data-action="nav" data-view="${id}">
+        <button class="${state.view === id ? "active" : ""}" aria-current="${state.view === id ? "page" : "false"}" data-action="nav" data-view="${id}">
           <span aria-hidden="true">${icon}</span>
           <small>${label}</small>
           ${id === "messages" && unread ? `<b class="jbs-nav-badge">${unread > 99 ? "99+" : unread}</b>` : ""}
@@ -789,9 +890,9 @@ function renderHome() {
   return `
     <section class="jbs-welcome-card">
       <div>
-        <span class="jbs-eyebrow">WELCOME BACK</span>
+        <span class="jbs-eyebrow">YOUR HOME. YOUR NEXT CHAPTER.</span>
         <h1>Hi, ${escapeHtml(displayName().split(" ")[0])}</h1>
-        <p>Track your work, approve quotes, save ideas, and message Billy or Jeremiah.</p>
+        <p>Your projects, plans, and conversations—all in one place.</p>
       </div>
       <button class="jbs-primary" data-action="open-quote-request">Request a Quote</button>
     </section>
@@ -800,17 +901,23 @@ function renderHome() {
       <button data-action="show-quotes"><strong>${openQuotes.length}</strong><span>Quotes to review</span></button>
       <button data-action="nav" data-view="messages"><strong>${unreadCount()}</strong><span>Unread messages</span></button>
     </section>
+    ${openQuotes.length || unreadCount() ? `<section class="jbs-attention"><span>YOUR NEXT STEP</span>${openQuotes.length?`<button data-action="show-quotes"><b>${openQuotes.length} quote${openQuotes.length===1?'':'s'} ready to review</b><span>Review details ›</span></button>`:''}${unreadCount()?`<button data-action="nav" data-view="messages"><b>${unreadCount()} unread message${unreadCount()===1?'':'s'}</b><span>Open conversation ›</span></button>`:''}</section>`:''}
     ${active ? renderTimelinePreview(active) : renderNoProjects()}
     <section class="jbs-section">
       <div class="jbs-section-title"><div><span class="jbs-eyebrow">QUICK START</span><h2>Plan your next project</h2></div></div>
+      <div class="jbs-design-grid">
+        <button class="jbs-design-card deck" data-action="open-builder"><div class="jbs-design-art" aria-hidden="true">${renderDeck(calculateDeckBuilder({length:16,depth:12,height:3,material:'cedar',color:'Cedar'}),{yaw:-32,elevation:28,zoom:1,top:false,framing:false}).replace('data-deck-scene','data-deck-thumbnail')}</div><div><span>LIVE DECK DESIGN</span><h3>Build it. See it.</h3><p>Explore dimensions, finishes, railing, and stairs.</p><b>Open deck builder ↗</b></div></button>
+        <button class="jbs-design-card paint" data-action="open-paint"><div class="jbs-paint-art" aria-hidden="true"><i></i><i></i><i></i><span>YOUR PHOTO + YOUR COLOR</span></div><div><span>PHOTO PAINT PREVIEW</span><h3>Find your color.</h3><p>Try paint on your walls, trim, or exterior.</p><b>Try paint colors ↗</b></div></button>
+      </div>
       <div class="jbs-action-grid">
-        <button data-action="open-builder"><span>▦</span><b>Deck Builder</b><small>Design, preview & plan</small></button>
+
         <button data-action="open-estimator"><span>≈</span><b>Rough Cost</b><small>Get a planning range</small></button>
         <button data-action="open-plan"><span>＋</span><b>Save a Plan</b><small>Ideas, budget & notes</small></button>
-        <button data-action="open-paint"><span>◐</span><b>Paint Preview</b><small>Colors on your photo</small></button>
+
         <button data-action="nav" data-view="explore"><span>◈</span><b>Browse Ideas</b><small>Materials & inspiration</small></button>
       </div>
     </section>
+    ${state.plans.length ? `<section class="jbs-panel"><div class="jbs-section-title"><div><span class="jbs-eyebrow">PICK UP WHERE YOU LEFT OFF</span><h2>Saved designs & plans</h2></div><button class="jbs-link-button" data-action="show-plans">View all ›</button></div>${state.plans.slice(0,2).map(renderPlanCard).join('')}</section>`:''}
     ${recent.length ? `
       <section class="jbs-panel">
         <div class="jbs-section-title"><div><span class="jbs-eyebrow">RECENT ACTIVITY</span><h2>Project updates</h2></div></div>
@@ -853,7 +960,7 @@ function renderTimelinePreview(record) {
 }
 
 function renderActivity(event) {
-  const icon = event.event_type === "schedule" ? "◷" : event.event_type.includes("photo") ? "▧" : event.event_type === "stage" ? "✓" : "•";
+  const icon = event.event_type === "schedule" ? "◷" : String(event.event_type || "").includes("photo") ? "▧" : event.event_type === "stage" ? "✓" : "•";
   return `
     <article>
       <span class="jbs-activity-icon">${icon}</span>
@@ -863,34 +970,21 @@ function renderActivity(event) {
 }
 
 function renderProjects() {
-  const quotes = state.records.filter((record) => record.record_type === "quote");
-  const projects = state.records.filter((record) => record.record_type !== "quote");
-  return `
-    <section class="jbs-section">
-      <div class="jbs-section-title"><div><span class="jbs-eyebrow">PRIVATE TO YOUR ACCOUNT</span><h1>Projects & Quotes</h1></div><button class="jbs-primary small" data-action="open-quote-request">+ Quote</button></div>
-      <div class="jbs-segmented">
-        <button class="active" data-action="scroll-section" data-target="project-list">Projects <b>${projects.length}</b></button>
-        <button data-action="scroll-section" data-target="quote-list">Quotes <b>${quotes.length}</b></button>
-        <button data-action="scroll-section" data-target="plan-list">Plans <b>${state.plans.length}</b></button>
-      </div>
-    </section>
-    <section class="jbs-panel" id="project-list">
-      <div class="jbs-section-title"><h2>My Projects</h2></div>
-      ${projects.length ? projects.map(renderRecordCard).join("") : '<p class="jbs-muted">No active projects are assigned yet.</p>'}
-    </section>
-    <section class="jbs-panel" id="quote-list">
-      <div class="jbs-section-title"><h2>My Quotes</h2></div>
-      ${quotes.length ? quotes.map(renderRecordCard).join("") : '<p class="jbs-muted">No quotes are waiting for review.</p>'}
-    </section>
-    <section class="jbs-panel" id="plan-list">
-      <div class="jbs-section-title"><h2>Saved Project Plans</h2><button class="jbs-link-button" data-action="open-plan">+ New plan</button></div>
-      ${state.plans.length ? state.plans.map(renderPlanCard).join("") : '<p class="jbs-muted">Save ideas, measurements, colors, budget, and timing in one place.</p>'}
-    </section>
-    <section class="jbs-panel">
-      <div class="jbs-section-title"><h2>Quote Requests</h2></div>
-      ${state.requests.length ? state.requests.map((request) => `<article class="jbs-request-row"><div><b>${escapeHtml(request.project_type)}</b><small>Sent ${formatDate(request.created_at)}</small></div><span class="jbs-status">${escapeHtml(request.status)}</span></article>`).join("") : '<p class="jbs-muted">No quote requests submitted yet.</p>'}
-    </section>
-  `;
+  const groups = workspaceGroups(state.records,state.plans,state.requests,state.projectSearch,state.projectStatus);
+  const totals = workspaceGroups(state.records,state.plans,state.requests);
+  const tabs = [['all','All'],['projects','Projects'],['quotes','Quotes'],['plans','Plans'],['requests','Requests']];
+  const visible = key => state.projectTab==='all' || state.projectTab===key;
+  const empty = text => `<p class="jbs-list-empty">${state.projectSearch ? 'No matches. Try another name, location, or project type.' : text}</p>`;
+  return `<section class="jbs-section">
+    <div class="jbs-section-title"><div><span class="jbs-eyebrow">YOUR WORKSPACE</span><h1>Projects & Quotes</h1><p>From the first idea to the final walkthrough.</p></div><button class="jbs-primary small" data-action="open-quote-request">+ Quote</button></div>
+    <label class="jbs-search"><span aria-hidden="true">⌕</span><input type="search" aria-label="Search projects, quotes and plans" data-field="projectSearch" value="${escapeHtml(state.projectSearch)}" placeholder="Search by name, location, or project type"></label>
+    <div class="jbs-segmented" role="group" aria-label="Show workspace items">${tabs.map(([key,label])=>`<button data-action="project-tab" data-tab="${key}" aria-pressed="${state.projectTab===key}" class="${state.projectTab===key?'active':''}">${label}${key==='all'?'':` <b>${totals[key].length}</b>`}</button>`).join('')}</div>
+    ${visible('projects')?`<label class="jbs-status-filter">Project status <select data-field="projectStatus">${[['all','All stages'],['active','Active'],['completed','Completed']].map(([key,label])=>`<option value="${key}" ${state.projectStatus===key?'selected':''}>${label}</option>`).join('')}</select></label>`:''}
+  </section>
+  ${visible('projects')?`<section class="jbs-panel" id="project-list"><div class="jbs-section-title"><h2>My projects</h2><span>${groups.projects.length}</span></div>${groups.projects.map(renderRecordCard).join('')||empty('Your projects will appear here when assigned by JB’s.')}</section>`:''}
+  ${visible('quotes')?`<section class="jbs-panel" id="quote-list"><div class="jbs-section-title"><h2>My quotes</h2><span>${groups.quotes.length}</span></div>${groups.quotes.map(renderRecordCard).join('')||empty('Your quotes will appear here for review and signature.')}</section>`:''}
+  ${visible('plans')?`<section class="jbs-panel" id="plan-list"><div class="jbs-section-title"><h2>Saved designs & plans</h2><button class="jbs-link-button" data-action="open-plan">+ New plan</button></div>${groups.plans.map(renderPlanCard).join('')||empty('Start a deck, paint preview, or project plan and save it here.')}</section>`:''}
+  ${visible('requests')?`<section class="jbs-panel" id="request-list"><div class="jbs-section-title"><h2>Quote requests</h2><span>${groups.requests.length}</span></div>${groups.requests.map(request=>`<article class="jbs-request-row"><div><b>${escapeHtml(request.project_type)}</b><small>Sent ${formatDate(request.created_at)}</small></div><span class="jbs-status">${escapeHtml(request.status||'Submitted')}</span></article>`).join('')||empty('No requests yet. Tell us what you have in mind using + Quote.')}</section>`:''}`;
 }
 
 function renderRecordCard(record) {
@@ -915,9 +1009,10 @@ function builderConfigFor(plan) {
 function renderPlanCard(plan) {
   const builder = builderConfigFor(plan);
   const paint = plan.analyzer_result?.tool === "paint_visualizer";
+  const preview = builder?.preview || (paint ? plan.photos?.[1] : plan.photos?.[0]);
   return `
     <button class="jbs-record-card" data-action="${builder ? "edit-builder" : paint ? "edit-paint" : "edit-plan"}" data-id="${escapeHtml(plan.id)}">
-      <span class="jbs-record-icon">${builder ? "▦" : "✎"}</span>
+      <span class="jbs-record-icon">${preview ? `<img src="${safeImageSource(typeof preview==='string'?preview:preview.data)}" alt="Saved ${builder?'deck':paint?'paint':'project'} preview" loading="lazy">` : builder ? "▦" : "✎"}</span>
       <span class="jbs-record-copy"><b>${escapeHtml(plan.title)}</b><small>${escapeHtml(plan.project_type || "Project plan")} · ${escapeHtml(plan.timeframe || "Timing not set")}</small><em>${escapeHtml(plan.status || "Draft")}</em></span>
       <span class="jbs-record-value">${builder ? "Open Builder" : paint ? "Open Paint Preview" : "Edit"} ›</span>
     </button>
@@ -925,21 +1020,18 @@ function renderPlanCard(plan) {
 }
 
 function renderMessages() {
-  return `
-    <section class="jbs-message-shell">
-      <div class="jbs-message-heading">
-        <div><span class="jbs-eyebrow">DIRECT WITH THE OWNERS</span><h1>Billy & Jeremiah</h1><p>Messages, quote questions, and project updates</p></div>
-        <span class="jbs-online-dot">Active</span>
-      </div>
-      <div class="jbs-thread" aria-live="polite">
-        ${state.messages.length ? state.messages.map(renderMessage).join("") : '<div class="jbs-empty-chat"><span>✉</span><h2>Start a conversation</h2><p>Send us a question about your quote or project.</p></div>'}
-      </div>
-      <form class="jbs-message-composer" data-form="message">
-        <textarea name="message" maxlength="4000" placeholder="Type a message…" aria-label="Message"></textarea>
-        <button class="jbs-primary" type="submit" data-action="send-message">Send</button>
-      </form>
-    </section>
-  `;
+  let day = '';
+  const messages = state.messages.map(message=>{const label=messageDay(message.created_at);const divider=label===day?'':`<div class="jbs-message-day">${escapeHtml(label)}</div>`;day=label;return divider+renderMessage(message);}).join('');
+  return `<section class="jbs-message-shell">
+    <div class="jbs-message-heading"><span class="jbs-team-avatar" aria-hidden="true">JB</span><div><span class="jbs-eyebrow">YOUR PROJECT TEAM</span><h1>Billy & Jeremiah</h1><p>Questions, details, and updates in one conversation.</p></div></div>
+    <div class="jbs-thread" aria-label="Conversation with JB’s">${messages||'<div class="jbs-empty-chat"><span>✉</span><h2>Start a conversation</h2><p>Ask us about your quote or next project.</p></div>'}</div>
+    <form class="jbs-message-composer" data-form="message">
+      <textarea name="message" data-field="messageDraft" maxlength="4000" placeholder="Message your project team…" aria-label="Message" ${state.messageSending?'disabled':''}>${escapeHtml(state.messageDraft)}</textarea>
+      <button class="jbs-primary" type="submit" data-action="send-message" ${state.messageSending?'disabled':''}>${state.messageSending?'Sending…':'Send'}</button>
+    </form>
+    ${state.messageError?`<p class="jbs-message-error" role="alert">${escapeHtml(state.messageError)} Your draft is kept. Try Send again.</p>`:''}
+    <p class="jbs-composer-hint">${state.demo?'Sample conversation · demo messages stay in this preview.':'Only you and JB’s can see this conversation.'} <span>Ctrl / ⌘ + Enter to send</span></p>
+  </section>`;
 }
 
 function renderMessage(message) {
@@ -991,21 +1083,25 @@ function renderMore() {
       <span class="jbs-eyebrow">PLANNING CENTER</span><h1>Project Tools</h1>
       <p class="jbs-lead">Everything you need before, during, and after your project.</p>
       <div class="jbs-tool-list">
+        <h2 class="jbs-tool-group">Design & plan</h2>
         ${toolButton("▦", "Deck & Project Builder", "Lay out a deck, preview it, and create a planning materials list.", "open-builder")}
         ${toolButton("≈", "Rough Cost Estimator", "Build a planning range—not a final quote.", "open-estimator")}
-        ${toolButton("✎", "Saved Project Plans", "Keep ideas, notes, measurements, budget, and timing.", "open-plan")}
+        ${toolButton("✎", "Saved Project Plans", "Continue your saved designs, notes, and measurements.", "show-plans")}
         ${toolButton("◐", "Photo Paint Visualizer", "Try wall, trim, or exterior colors on your own photo.", "open-paint")}
         ${toolButton("▧", "Photo Project Check", "Check whether your photos show enough detail.", "open-analyzer")}
         ${toolButton("↔", "Saved Measurements", "Store room, deck, roof, gutter, or trailer measurements.", "open-measurements")}
         ${toolButton("◐", "Materials & Colors", "Compare palettes and save favorites.", "open-materials")}
+        <h2 class="jbs-tool-group">Care for your home</h2>
         ${toolButton("✓", "Home Maintenance Center", "Use a seasonal checklist and save progress.", "open-maintenance")}
+        <h2 class="jbs-tool-group">Your app</h2>
+        ${toolButton("↗", "What’s new in " + APP_VERSION, "See the latest improvements and check for updates.", "open-release")}
         ${toolButton("⇩", isInstalled() ? "App Installed" : "Install This App", isInstalled() ? `Version ${APP_VERSION} is installed.` : "Add the app to your home screen.", "open-install")}
         ${toolButton("♢", "Push Notifications", "Get alerts for messages, quotes, and project changes.", "enable-notifications")}
       </div>
     </section>
     <section class="jbs-panel jbs-account-card">
       <div><span class="jbs-avatar large">${escapeHtml(displayName().slice(0, 1).toUpperCase())}</span><div><b>${escapeHtml(displayName())}</b><small>${escapeHtml(currentEmail())}</small><em>App version ${APP_VERSION}</em></div></div>
-      <button class="jbs-outline" data-action="sign-out">${state.demo ? "Exit Demo" : "Sign out"}</button>
+      <button class="jbs-outline" data-action="sign-out">${state.demo ? state.previewOwnerSession?"Back to Owner":"Exit Demo" : "Sign out"}</button>
     </section>
   `;
 }
@@ -1132,7 +1228,7 @@ function renderQuoteDetail(record) {
 }
 
 function renderDocument(doc, index) {
-  const source = typeof doc === "string" ? doc : doc?.src || doc?.url || "";
+  const source = documentUrl(typeof doc === "string" ? doc : doc?.src || doc?.url || "");
   const name = typeof doc === "string" ? `Document ${index + 1}` : doc?.name || `Document ${index + 1}`;
   if (!source) return "";
   return `<a href="${escapeHtml(source)}" target="_blank" rel="noopener"><span>▤</span><b>${escapeHtml(name)}</b><em>Open ›</em></a>`;
@@ -1164,6 +1260,7 @@ function renderModal() {
     maintenance: renderMaintenanceModal,
     install: renderInstallModal,
     notifications: renderNotificationModal,
+    release: () => `<p class="jbs-lead">Version ${APP_VERSION} · September 14, 2026</p><ul class="jbs-release-list"><li>A refreshed dashboard with clear next steps and quick access to saved designs.</li><li>Search and filter projects, quotes, plans, and requests.</li><li>Message drafts stay in place while you navigate. Failed sends keep your message for retry.</li><li>Owner customer tools organized into timeline, schedule, photos, and changes.</li><li>Live deck planning costs on mobile, clearer view controls, and named paint colors.</li></ul><button class="jbs-outline" data-release-check>Check for updates</button>`,
     quoteChange: renderQuoteChangeModal,
     quoteSign: renderQuoteSignModal,
     projectPhoto: renderProjectPhotoModal,
@@ -1365,7 +1462,7 @@ function renderBuilderPreview(result) {
 }
 
 function renderBuilderSvg(result) {
-  return `<div class="jbs-deck-toolbar" role="group" aria-label="Deck view controls"><button data-action="deck-view" data-angle="front">Perspective</button><button data-action="deck-view" data-angle="top">Top</button><button data-action="deck-rotate" data-turn="-20" aria-label="Rotate left">↶</button><button data-action="deck-rotate" data-turn="20" aria-label="Rotate right">↷</button><button data-action="deck-zoom" data-zoom="-.15" aria-label="Zoom out">−</button><button data-action="deck-zoom" data-zoom=".15" aria-label="Zoom in">+</button><button data-action="deck-framing" aria-pressed="${state.builderView.framing}">${state.builderView.framing?'Decking':'Framing'}</button></div><div class="jbs-deck-stage">${renderDeck(result,state.builderView)}</div>`;
+  return `<div class="jbs-deck-toolbar" role="group" aria-label="Deck view controls"><button data-action="deck-view" data-angle="front" aria-pressed="${!state.builderView.top}">3D view</button><button data-action="deck-view" data-angle="top" aria-pressed="${state.builderView.top}">Plan view</button><button data-action="deck-rotate" data-turn="-20" aria-label="Rotate left">↶</button><button data-action="deck-rotate" data-turn="20" aria-label="Rotate right">↷</button><button data-action="deck-zoom" data-zoom="-.15" aria-label="Zoom out">−</button><button data-action="deck-zoom" data-zoom=".15" aria-label="Zoom in">+</button><button data-action="deck-framing" aria-pressed="${state.builderView.framing}">${state.builderView.framing?'Decking':'Framing'}</button></div><div class="jbs-deck-stage">${renderDeck(result,state.builderView)}</div>`;
 }
 
 function renderEstimatorModal() {
@@ -1468,7 +1565,7 @@ function renderInstallModal() {
   return `
     <div class="jbs-install-card"><img src="/icon.svg" alt="JB’s app icon"><div><h3>${isInstalled() ? "JB’s is installed" : "Install JB’s on your phone"}</h3><p>Current version ${APP_VERSION}</p></div></div>
     <ol class="jbs-instruction-list">${instructions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
-    <div class="jbs-help"><b>Automatic updates</b><p>The app checks for an updated version when it opens. If anything looks old, close and reopen it once.</p></div>
+    <div class="jbs-help"><b>Keep your app current</b><p>Updates are checked when you open the app. Save your work before reloading.</p><button class="jbs-outline" data-release-check>Check for updates</button></div>
   `;
 }
 
@@ -1573,34 +1670,38 @@ async function handleClick(event) {
       render();
       return;
     }
-    if (action === "show-quotes") {
+    if (action === "show-quotes" || action === "show-plans") {
       state.view = "projects";
+      state.projectTab = action === "show-quotes" ? "quotes" : "plans";
+      state.projectSearch = "";
+      state.recordId = null;
       render();
       window.setTimeout(() => state.root?.querySelector("#quote-list")?.scrollIntoView({ behavior: "smooth" }), 0);
       return;
     }
+    if (action === "project-tab") { state.projectTab = target.dataset.tab; render(); return; }
     if (action === "scroll-section") {
       state.root?.querySelector(`#${target.dataset.target}`)?.scrollIntoView({ behavior: "smooth" });
       return;
     }
-    if (action === "refresh") return loadCustomerData(true);
-    if (action === "open-quote-request") return openQuoteRequest();
-    if (action === "quote-next") return quoteNext();
+    if (action === "refresh") return await loadCustomerData(true);
+    if (action === "open-quote-request") return await openQuoteRequest();
+    if (action === "quote-next") return await quoteNext();
     if (action === "quote-prev") {
       state.quoteStep = Math.max(1, state.quoteStep - 1);
       render();
       return;
     }
-    if (action === "submit-quote-request") return submitQuoteRequest(target);
-    if (action === "open-paint") return openPaint();
-    if (action === "edit-paint") return openPaint(state.plans.find(p=>String(p.id)===String(target.dataset.id)));
+    if (action === "submit-quote-request") return await submitQuoteRequest(target);
+    if (action === "open-paint") return await openPaint();
+    if (action === "edit-paint") return await openPaint(state.plans.find(p=>String(p.id)===String(target.dataset.id)));
     if (action === "deck-view") { state.builderView.top=target.dataset.angle==='top'; if(!state.builderView.top)state.builderView.yaw=target.dataset.angle==='left'?35:-32;updateBuilderPreview();return; }
     if (action === "deck-rotate") { state.builderView.top=false;state.builderView.yaw+=Number(target.dataset.turn);updateBuilderPreview();return; }
     if (action === "deck-zoom") {state.builderView.zoom=Math.max(.7,Math.min(2,state.builderView.zoom+Number(target.dataset.zoom)));updateBuilderPreview();return;}
     if (action === "deck-framing") {state.builderView.framing=!state.builderView.framing;updateBuilderPreview();return;}
-    if (action === "open-builder") return openBuilder();
-    if (action === "edit-builder") return editBuilder(target.dataset.id);
-    if (action === "builder-next") return builderNext();
+    if (action === "open-builder") return await openBuilder();
+    if (action === "edit-builder") return await editBuilder(target.dataset.id);
+    if (action === "builder-next") return await builderNext();
     if (action === "builder-prev") {
       state.builderStep = Math.max(1, state.builderStep - 1);
       render();
@@ -1608,44 +1709,46 @@ async function handleClick(event) {
     }
     if (action === "save-builder") return await saveBuilder(target);
     if (action === "builder-to-quote") return await builderToQuote(target);
-    if (action === "open-estimator") return openModal("estimator", "Rough Cost Estimator");
-    if (action === "save-estimate-plan") return saveEstimatePlan();
-    if (action === "estimator-to-quote") return estimatorToQuote();
-    if (action === "open-plan") return openPlan();
-    if (action === "edit-plan") return editPlan(target.dataset.id);
-    if (action === "save-plan") return savePlan(target);
-    if (action === "open-analyzer") return openAnalyzer();
-    if (action === "save-analysis-plan") return saveAnalysisPlan();
-    if (action === "analyzer-to-quote") return analyzerToQuote();
-    if (action === "open-measurements") return openModal("measurements", "Saved Measurements");
-    if (action === "open-materials") return openModal("materials", "Materials & Colors");
-    if (action === "toggle-color") return toggleColor(target.dataset.color);
-    if (action === "open-maintenance") return openModal("maintenance", "Home Maintenance Center");
-    if (action === "open-install") return openModal("install", "Install the App");
-    if (action === "enable-notifications" || action === "open-notifications") return openModal("notifications", "Notifications");
-    if (action === "confirm-notifications") return enableNotifications(target);
-    if (action === "save-idea") return toggleIdea(target.dataset.id);
-    if (action === "send-message") return sendMessage(target);
-    if (action === "request-quote-change") return openQuoteChange(target.dataset.id);
-    if (action === "submit-quote-change") return submitQuoteResponse("changes_requested", target);
-    if (action === "open-quote-sign") return openQuoteSign(target.dataset.id);
-    if (action === "submit-quote-sign") return submitQuoteResponse("accepted", target);
-    if (action === "clear-signature") return clearSignature();
-    if (action === "open-project-photo") return openProjectPhoto(target.dataset.id);
-    if (action === "submit-project-photo") return submitProjectPhoto(target);
-    if (action === "open-change-order") return openChangeOrder(target.dataset.id);
-    if (action === "submit-change-order") return submitChangeOrder(target);
-    if (action === "respond-change-order") return respondChangeOrder(target.dataset.id, target.dataset.response);
-    if (action === "view-photo") return openPhotoViewer(target.dataset.source, target.dataset.alt);
-    if (action === "remove-draft-photo") return removeDraftPhoto(target.dataset.space, Number(target.dataset.index));
+    if (action === "open-estimator") return await openModal("estimator", "Rough Cost Estimator");
+    if (action === "save-estimate-plan") return await saveEstimatePlan();
+    if (action === "estimator-to-quote") return await estimatorToQuote();
+    if (action === "open-plan") return await openPlan();
+    if (action === "edit-plan") return await editPlan(target.dataset.id);
+    if (action === "save-plan") return await savePlan(target);
+    if (action === "open-analyzer") return await openAnalyzer();
+    if (action === "save-analysis-plan") return await saveAnalysisPlan();
+    if (action === "analyzer-to-quote") return await analyzerToQuote();
+    if (action === "open-measurements") return await openModal("measurements", "Saved Measurements");
+    if (action === "open-materials") return await openModal("materials", "Materials & Colors");
+    if (action === "toggle-color") return await toggleColor(target.dataset.color);
+    if (action === "open-maintenance") return await openModal("maintenance", "Home Maintenance Center");
+    if (action === "open-release") return openModal("release", "What’s new");
+    if (action === "open-install") return await openModal("install", "Install the App");
+    if (action === "enable-notifications" || action === "open-notifications") return await openModal("notifications", "Notifications");
+    if (action === "confirm-notifications") return await enableNotifications(target);
+    if (action === "save-idea") return await toggleIdea(target.dataset.id);
+    if (action === "send-message") return await sendMessage(target);
+    if (action === "request-quote-change") return await openQuoteChange(target.dataset.id);
+    if (action === "submit-quote-change") return await submitQuoteResponse("changes_requested", target);
+    if (action === "open-quote-sign") return await openQuoteSign(target.dataset.id);
+    if (action === "submit-quote-sign") return await submitQuoteResponse("accepted", target);
+    if (action === "clear-signature") return await clearSignature();
+    if (action === "open-project-photo") return await openProjectPhoto(target.dataset.id);
+    if (action === "submit-project-photo") return await submitProjectPhoto(target);
+    if (action === "open-change-order") return await openChangeOrder(target.dataset.id);
+    if (action === "submit-change-order") return await submitChangeOrder(target);
+    if (action === "respond-change-order") return await respondChangeOrder(target.dataset.id, target.dataset.response);
+    if (action === "view-photo") return await openPhotoViewer(target.dataset.source, target.dataset.alt);
+    if (action === "remove-draft-photo") return await removeDraftPhoto(target.dataset.space, Number(target.dataset.index));
     if (action === "close-modal" || action === "close-modal-backdrop") {
       state.modal = null;
       render();
       return;
     }
-    if (action === "sign-out") return signOut();
+    if (action === "sign-out") return await signOut();
   } catch (error) {
     console.error("[JBs customer portal]", error);
+    setBusy(target, false);
     setToast(error?.message || "That action could not be completed.");
   }
 }
@@ -1670,7 +1773,7 @@ function handleInput(event) {
   else if (field.startsWith("order.")) state.changeDraft[field.slice(6)] = value;
   else {
     state[field] = value;
-    if (field === "exploreSearch") render();
+    if (["exploreSearch","projectSearch","projectStatus"].includes(field)) render();
   }
 }
 
@@ -1842,7 +1945,7 @@ async function persistBuilder(button, closeWhenDone) {
   state.builderDraft = { ...result.input, id: saved.id, photos: saved.photos || [] };
   if (closeWhenDone) {
     state.modal = null;
-    state.view = "projects";
+    state.view = "projects"; state.projectTab = "plans"; state.projectSearch = "";
     render();
   }
   return saved;
@@ -1916,7 +2019,7 @@ async function submitQuoteRequest(button) {
     const created = { ...payload, id: `demo-request-${Date.now()}`, created_at: new Date().toISOString() };
     state.requests.unshift(created);
     state.modal = null;
-    state.view = "projects";
+    state.view = "projects"; state.projectTab = "requests"; state.projectSearch = "";
     render();
     setToast("Demo quote request sent.");
     return;
@@ -1926,7 +2029,7 @@ async function submitQuoteRequest(button) {
   if (error) throw error;
   await sendPush("quote_request", { quoteRequestId: data.id });
   state.modal = null;
-  state.view = "projects";
+  state.view = "projects"; state.projectTab = "requests"; state.projectSearch = "";
   await loadCustomerData(false);
   setToast("Quote request sent. We’ll respond in Messages.");
 }
@@ -1981,7 +2084,7 @@ async function savePlan(button) {
     if (index >= 0) state.plans[index] = next;
     else state.plans.unshift(next);
     state.modal = null;
-    state.view = "projects";
+    state.view = "projects"; state.projectTab = "plans"; state.projectSearch = "";
     render();
     setToast("Demo plan saved.");
     return;
@@ -1993,7 +2096,7 @@ async function savePlan(button) {
   setBusy(button, false);
   if (error) throw error;
   state.modal = null;
-  state.view = "projects";
+  state.view = "projects"; state.projectTab = "plans"; state.projectSearch = "";
   await loadCustomerData(false);
   setToast("Project plan saved.");
 }
@@ -2076,50 +2179,41 @@ async function saveWorkspace() {
 }
 
 async function sendMessage(button) {
-  const textarea = state.root.querySelector(".jbs-message-composer textarea");
-  const message = clampText(textarea?.value, 4000);
-  if (!message) return;
-  setBusy(button, true, "Sending…");
-  if (state.demo) {
-    state.messages.push({
-      id: `demo-message-${Date.now()}`,
-      customer_user_id: "demo",
-      customer_email: "demo@example.com",
-      sender_user_id: "demo",
-      sender_role: "customer",
-      message,
-      created_at: new Date().toISOString(),
-    });
-    render();
-    setToast("Demo message sent.");
-    return;
+  const message = clampText(state.messageDraft, 4000);
+  if (!message || state.messageSending) return;
+  const scope = state.scope;
+  state.messageSending = true; state.messageError = '';
+  render();
+  try {
+    let saved;
+    if (state.demo) saved={id:`demo-message-${Date.now()}`,customer_user_id:'demo',sender_role:'customer',message,created_at:new Date().toISOString()};
+    else {
+      const {data,error}=await client().from('customer_messages').insert({customer_user_id:state.session.user.id,customer_email:currentEmail(),sender_user_id:state.session.user.id,sender_role:'customer',message}).select('*').single();
+      if(error) throw error;
+      saved=data;
+    }
+    if(scope!==state.scope) return;
+    state.messageDraft='';
+    if(!state.messages.some(item=>item.id===saved.id))state.messages.push(saved);
+    if(!state.demo) sendPush('message',{messageId:saved.id}).catch(()=>{});
+  } catch(error) {
+    if(scope===state.scope)state.messageError='Your message could not be sent.';
+  } finally {
+    if(scope===state.scope){ state.messageSending=false; render(); }
   }
-  const { data, error } = await client().from("customer_messages").insert({
-    customer_user_id: state.session.user.id,
-    customer_email: currentEmail(),
-    sender_user_id: state.session.user.id,
-    sender_role: "customer",
-    message,
-  }).select("id").single();
-  setBusy(button, false);
-  if (error) throw error;
-  await sendPush("message", { messageId: data.id });
-  await loadCustomerData(false);
 }
 
 async function markMessagesRead() {
-  if (!state.session || state.demo) return;
-  const unread = state.messages.filter((message) => message.sender_role === "owner" && !state.reads.some((read) => read.message_id === message.id && read.user_id === state.session.user.id));
-  if (!unread.length) return;
-  const rows = unread.map((message) => ({
-    message_id: message.id,
-    user_id: state.session.user.id,
-    reader_role: "customer",
-    reader_name: "Customer",
-    read_at: new Date().toISOString(),
-  }));
-  const { error } = await client().from("message_reads").upsert(rows, { onConflict: "message_id,user_id" });
-  if (!error) state.reads.push(...rows);
+  if (!state.session || markMessagesRead.busy) return;
+  const scope=state.scope;
+  const unread=state.messages.filter(message=>message.sender_role==='owner'&&!state.reads.some(read=>read.message_id===message.id&&read.user_id===state.session.user.id));
+  if(!unread.length)return;
+  const rows=unread.map(message=>({message_id:message.id,user_id:state.session.user.id,reader_role:'customer',reader_name:'Customer',read_at:new Date().toISOString()}));
+  markMessagesRead.busy=true;
+  try {
+    const result=state.demo?{}:await client().from('message_reads').upsert(rows,{onConflict:'message_id,user_id'});
+    if(!result.error&&scope===state.scope){state.reads.push(...rows);state.root?.querySelector('.jbs-nav-badge')?.remove();}
+  } catch {} finally {markMessagesRead.busy=false;}
 }
 
 function openQuoteChange(recordId) {
@@ -2419,6 +2513,7 @@ async function sendPush(eventType, payload = {}) {
 
 async function signOut() {
   if (state.demo) {
+    resetCustomerScope();
     state.root?.remove();
     state.root = null;
     const ownerSession=state.previewOwnerSession;
@@ -2430,7 +2525,8 @@ async function signOut() {
     enhanceEntry();
     return;
   }
-  await client().auth.signOut();
+  const {error} = await client().auth.signOut();
+  if(error)throw error;
 }
 
 function setBusy(button, busy, text = "Please wait…") {
@@ -2459,10 +2555,27 @@ async function persistPaint(d,preview,requestQuote,button) {
   else {const query=d.id?client().from('customer_plans').update(payload).eq('id',d.id):client().from('customer_plans').insert(payload);const {data,error}=await query.select('*').single();if(error)throw error;saved=data;}
   const idx=state.plans.findIndex(p=>p.id===saved.id);if(idx<0)state.plans.unshift(saved);else state.plans[idx]=saved;d.id=saved.id;
   if(requestQuote){openQuoteRequest();state.quoteDraft={...state.quoteDraft,plan_id:saved.id,project_type:d.setting+' Painting',description:'Please quote the '+d.setting.toLowerCase()+' painting shown in my saved paint preview: '+d.areas.map(a=>a.name+' ('+a.color+')').join(', '),materials:payload.materials.join('\n'),photos:[{data:d.photo},{data:preview}]};render();}
-  else{state.modal=null;state.view='projects';render();setToast(state.demo?'Demo paint plan saved.':'Paint plan saved to your private plans.');}
+  else{state.modal=null;state.view='projects';state.projectTab='plans';state.projectSearch='';render();setToast(state.demo?'Demo paint plan saved.':'Paint plan saved to your private plans.');}
 }
 let deckDrag=null;
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('[data-deck-scene]'))return;deckDrag={x:e.clientX,y:e.clientY,yaw:state.builderView.yaw,elevation:state.builderView.elevation};e.preventDefault();});
 document.addEventListener('pointermove',e=>{if(!deckDrag)return;state.builderView.top=false;state.builderView.yaw=deckDrag.yaw+(e.clientX-deckDrag.x)*.4;state.builderView.elevation=Math.max(12,Math.min(65,deckDrag.elevation-(e.clientY-deckDrag.y)*.18));updateBuilderPreview();});
 document.addEventListener('pointerup',()=>{deckDrag=null;});
 document.addEventListener('pointercancel',()=>{deckDrag=null;});
+
+// Keep keyboard navigation inside the open dialog and return to the workspace.
+document.addEventListener('keydown', event => {
+  const dialog = state.modal ? state.root?.querySelector('[role="dialog"]') : state.ownerOpen ? state.ownerRoot?.querySelector('[role="dialog"]') : null;
+  if(!dialog)return;
+  if(event.key==='Escape'){
+    if(state.modal){state.modal=null;render();state.root?.querySelector('#jbs-main-content')?.focus();}
+    else{state.ownerOpen=false;renderOwnerTools();state.ownerRoot?.querySelector('[data-owner-action="toggle"]')?.focus();}
+    event.preventDefault(); return;
+  }
+  if(event.key!=='Tab')return;
+  const controls=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex="0"]')].filter(el=>el.getClientRects().length);
+  const first=controls[0],last=controls.at(-1);
+  if(!first)return;
+  if(event.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){last.focus();event.preventDefault();}
+  else if(!event.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){first.focus();event.preventDefault();}
+});
