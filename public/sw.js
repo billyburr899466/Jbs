@@ -1,5 +1,5 @@
-const CACHE = 'jbs-app-v2.2.0';
-const APP_ASSETS = ['/','/manifest.webmanifest','/icon.svg','/customer-upgrade.css','/customer-upgrade.js','/customer-core.js','/deck-visual.js','/paint-visual.js','/builders.css'];
+const CACHE = 'jbs-app-v2.3.0';
+const APP_ASSETS = ['/','/manifest.webmanifest','/icon.svg','/customer-upgrade.css','/customer-upgrade.js','/customer-core.js','/deck-visual.js','/paint-visual.js','/builders.css','/refresh.css','/workspace-model.js','/release-status.js'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_ASSETS)));});
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('jbs-app-')&&k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
 self.addEventListener('fetch',event=>{
