@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const base = '/api/owner/scans';
   let configured = false, selected = [], manifests = [], jobs = [], active = null, busy = false, pollTimer, viewer, modelBlob, modelName, modelUrl;
-  let previewUrls = [], pollFailures = 0, requestGeneration = 0, pauseRequested = false;
+  let previewUrls = [], pollFailures = 0, requestGeneration = 0, pauseRequested = false, setupAvailable = false, connectionLoaded = false;
   const session = () => JSON.parse(localStorage.getItem('sb-bjmdtxxlzzhxskxkllvt-auth-token') || 'null');
   const ownerKey = () => session()?.user?.id || 'owner';
   function notice(text, bad = false) { $('scanNotice').textContent = text; $('scanNotice').classList.toggle('scan-error', bad); }
@@ -22,6 +22,8 @@
     for (const id of ['scanFiles','scanClear','scanName','scanExisting','scanRefresh','scanResume','scanRetry','scanCancel','scanDelete','scanOpen','scanImport','scanReopen']) $(id).disabled = value;
     $('scanBuild').textContent = value ? 'Working…' : 'Build 3D scan';
     $('scanPause').hidden = !value || !active || !['uploading','sending'].includes(active.status);
+    $('scanToken').disabled = $('scanConnect').disabled = value || !setupAvailable;
+    $('scanCheck').disabled = value || !configured;
   }
   function renderJob(job) {
     active = job;
@@ -50,8 +52,31 @@
     $('scanConnection').textContent = configured ? 'Processor configured · Ready to check and start' : 'Setup needed · Processing server is not connected yet';
     $('scanConnection').classList.toggle('scan-pending', !configured);
     $('scanConnectionHelp').hidden = configured;
+    const connection = await api('/processor');
+    setupAvailable = connection.setupAvailable;
+    if (connection.savedConnection && configured) $('scanConnection').textContent = 'WebODM account connected · Ready to check and start';
+    if (!connectionLoaded) { $('scanConnectionSetup').open = !configured; connectionLoaded = true; }
+    if (!setupAvailable && !configured) $('scanConnectNotice').textContent = 'Secure connection setup is temporarily unavailable. Refresh to try again.';
     setBusy(busy);
   }
+  function connectionNotice(text, bad = false) { $('scanConnectNotice').textContent = text; $('scanConnectNotice').classList.toggle('scan-error', bad); }
+  $('scanConnectForm').onsubmit = async event => {
+    event.preventDefault(); if (busy || !setupAvailable) return;
+    let token = $('scanToken').value.trim(); $('scanToken').value = ''; setBusy(true);
+    connectionNotice('Verifying the WebODM token and 3D output support…');
+    try {
+      await api('/processor', 'POST', { token }); token = '';
+      await refresh();
+      connectionNotice('Connected to WebODM Lightning. You can now choose photos and build a 3D scan. Processing uses your WebODM credits.');
+    } catch (error) { connectionNotice(error.message, true); }
+    finally { token = ''; $('scanToken').value = ''; setBusy(false); }
+  };
+  $('scanCheck').onclick = async () => {
+    if (busy) return; setBusy(true); connectionNotice('Checking the processing server…');
+    try { await api('/connection'); connectionNotice('Connection verified. The server accepts your account token and supports 3D models.'); }
+    catch (error) { connectionNotice(error.message, true); }
+    finally { setBusy(false); }
+  };
   function schedulePoll() {
     clearTimeout(pollTimer);
     if (active && ['queued','running'].includes(active.status)) pollTimer = setTimeout(poll, document.hidden ? 30000 : 8000);
@@ -160,7 +185,7 @@
   async function openModel(blob, name, provenance, persist = false) {
     if (blob.size > 48 * 1024 * 1024) throw Error('Use a GLB model under 48 MB.');
     const bytes = await blob.arrayBuffer();
-    const { mountScanViewer, inspectGlb } = await import('/xray-viewer.js?v=2.5.0');
+    const { mountScanViewer, inspectGlb } = await import('/xray-viewer.js?v=2.5.1');
     inspectGlb(bytes);
     if (viewer) { viewer.dispose(); viewer = null; }
     $('scanModel').hidden = false; $('scanCanvas').replaceChildren();

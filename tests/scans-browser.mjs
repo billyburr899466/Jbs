@@ -8,7 +8,17 @@ export async function reconstructionFlow(context,url,width,capture) {
  await page.locator('#scanConnection').filter({hasText:'not connected'}).waitFor();
  assert.equal(await page.locator('#scanBuild').isDisabled(),true);
  assert.equal(await page.locator('#scanConnectionHelp').isVisible(),true);
+ await page.locator('#scanConnect:not([disabled])').waitFor();
+ assert.equal(await page.locator('#scanToken').getAttribute('type'),'password');
  await capture(page,{path:`test-results/reconstruction-setup-${width}.png`,fullPage:false});
+ await page.locator('#scanToken').fill('rejected-browser-test-token');await page.locator('#scanConnect').click();
+ await page.locator('#scanConnectNotice').filter({hasText:'could not verify'}).waitFor();
+ assert.equal(await page.locator('#scanToken').inputValue(),'');assert.equal(await page.locator('#scanBuild').isDisabled(),true);
+ await page.locator('#scanToken').fill('browser-test-private-token');await page.locator('#scanConnect').click();
+ await page.locator('#scanConnectNotice').filter({hasText:'Connected to WebODM'}).waitFor();
+ assert.equal(await page.locator('#scanToken').inputValue(),'');
+ assert.doesNotMatch(await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage})),/browser-test-private-token/);
+ await page.locator('#scanCheck').click();await page.locator('#scanConnectNotice').filter({hasText:'Connection verified'}).waitFor();
  await page.locator('#scanImport').setInputFiles({name:'fixture-surface.glb',mimeType:'model/gltf-binary',buffer:testGlb()});
  await page.locator('#scanCanvas[data-loaded="true"]').waitFor();
  assert.equal(await page.locator('#scanCanvas canvas').count(),1);
@@ -21,7 +31,7 @@ export async function reconstructionFlow(context,url,width,capture) {
  assert.equal(await page.locator('#scanCanvas[data-loaded="true"]').count(),1,'bad imports preserve the last good viewer');
  await page.reload();await page.locator('#scanReopen').waitFor({state:'visible'});await page.locator('#scanReopen').click();await page.locator('#scanCanvas[data-loaded="true"]').waitFor();
  assert.equal(await page.locator('#scanModelTitle').innerText(),'fixture-surface');
- scans.configured=true;await page.locator('#scanRefresh').click();await page.locator('#scanConnection').filter({hasText:'configured'}).waitFor();
+ await page.locator('#scanRefresh').click();await page.locator('#scanConnection').filter({hasText:'account connected'}).waitFor();
  const images=await page.evaluate(()=>Array.from({length:12},(_,i)=>{const canvas=document.createElement('canvas');canvas.width=700;canvas.height=650;const c=canvas.getContext('2d');c.fillStyle=`hsl(${i*27} 50% 55%)`;c.fillRect(0,0,700,650);c.fillStyle='white';c.font='70px sans-serif';c.fillText('TEST '+i,80,300);return canvas.toDataURL('image/jpeg',.85).split(',')[1];}));
  const photos=images.map((value,i)=>({name:`view-${i}.jpg`,mimeType:'image/jpeg',buffer:Buffer.from(value,'base64')}));
  await page.locator('#scanFiles').setInputFiles([photos[0],photos[0]]);await page.locator('#scanNotice').filter({hasText:'duplicate'}).waitFor();assert.equal(await page.locator('#scanBuild').isDisabled(),true);
@@ -45,6 +55,6 @@ export async function reconstructionFlow(context,url,width,capture) {
  await capture(page,{path:`test-results/reconstruction-${width}.png`,fullPage:false});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
  page.once('dialog',d=>d.accept());await page.locator('#scanDelete').click();await page.locator('#scanNotice').filter({hasText:'deleted'}).waitFor();assert.equal(scans.rows.size,0);
- assert.deepEqual(errors,[]);console.log(`PASS reconstruction ${width}px: missing-engine state, GLB rendering/orbit/zoom/download, unsafe model rejection, IndexedDB restore, original uploads, processing, saved-job recovery, result viewer and deletion (mock processor)`);
+ assert.deepEqual(errors,[]);console.log(`PASS reconstruction ${width}px: secure connection setup, rejected-token recovery, token clearing, GLB rendering/orbit/zoom/download, unsafe model rejection, IndexedDB restore, original uploads, processing, saved-job recovery, result viewer and deletion (mock processor)`);
  await ctx.close();
 }

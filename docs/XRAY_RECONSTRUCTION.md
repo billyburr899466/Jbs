@@ -1,6 +1,6 @@
-# Owner photo reconstruction — 2.5.0
+# Owner photo reconstruction — 2.5.1
 
-The owner app now has the capture, original-photo upload, job control, private storage, NodeODM adapter, and real GLB viewer. **Automatic photo reconstruction is not enabled until a processing server is connected.** No reconstruction provider account, paid credits, or compute server was provisioned in this release. The app displays “Processing server is not connected yet” and disables starting a scan in that state.
+The owner app has the capture, original-photo upload, job control, private storage, NodeODM adapter, and real GLB viewer. **WebODM Lightning at `https://spark1.webodm.net` is selected as the hosted processor. The owner must connect a WebODM account token before automatic reconstruction is enabled.** No provider account or paid credits were purchased. The app shows the connection form and disables starting a scan until an account is connected.
 
 Existing GLB models can be opened, rotated, zoomed, inspected in wireframe, downloaded, and reopened from this device immediately. This is a real surface-model viewer. It does not add illustrative framing or utilities to a reconstructed model. The earlier measured concept remains available separately; its saved-project format and browser storage key are unchanged.
 
@@ -13,11 +13,17 @@ Existing GLB models can be opened, rotated, zoomed, inspected in wireframe, down
 5. After all originals have transferred, one commit queues photogrammetry. Returning to the owner app resumes status checks. Upload/transfer stages still need the app open; Pause and Resume work between files.
 6. A completed task's output archive is fetched server-side. Only a valid self-contained GLB is extracted, with a 48 MB model limit and a 120 MB archive limit. The app saves it privately and issues a ten-minute signed download URL. The browser parses the model locally with bundled Three.js.
 
-`xray_scans` has RLS and an owner-only read policy. Browser roles cannot create or update rows. The storage bucket is private with no public access policy. Provider credentials never go to the browser. Model JSON cannot load external files. All authenticated app responses use `private, no-store`.
+`xray_scans` has RLS and an owner-only read policy. Browser roles cannot create or update rows. The storage bucket is private with no public access policy. Saved provider credentials are never returned to the browser. Model JSON cannot load external files. All authenticated app responses use `private, no-store`.
 
 ## Connect a processor
 
-Use a dedicated, authenticated **NodeODM-compatible processor with the `gltf` option**. It can run on an owned computer/server or be supplied by a hosted provider. Before selecting a hosted provider, review its processing charges and photo-retention terms. The app does not purchase credits or auto-retry paid processing.
+Open the owner app → Customer workspace → X-Ray House → **Connect reconstruction server**. Create or sign into a [WebODM Lightning account](https://webodm.net/), copy its API token, and paste it into the password field in the owner app. **Connect WebODM** verifies the token and GLB support without creating a processing job. The connection takes effect immediately. **Check connection** can recheck access later. Connecting does not purchase credits; review processing charges and retention in WebODM before submitting house photos.
+
+The token is cleared from the field on submission and is never placed in localStorage, sessionStorage, public bundles, logs, or API responses. It travels only over authenticated HTTPS to JB's API and then to the fixed WebODM endpoint. The API uses AES-256-GCM with a random nonce and owner ID as authenticated additional data. Only ciphertext is saved in `xray_processor_connections`. That table has RLS, no browser grants and no browser policies; the security advisor's “RLS Enabled No Policy” information is intentional deny-by-default behavior. The server scopes all reads/writes to the verified owner. Another owner must connect their own account. Rejected tokens do not replace a working connection. Changing accounts is blocked while scans are saved, because their provider tasks belong to the original credentials; download and remove those scans first. Rechecking the same token is allowed.
+
+Production has `XRAY_CONNECTION_ENCRYPTION_KEY` stored as a sensitive server-only Vercel variable and `XRAY_NODEODM_URL` set to the chosen server. The encryption key must be retained; rotating it requires decrypting and re-encrypting stored credentials, not simply replacing the variable. Preview environments do not receive this production key. Both scan migrations are applied to the existing JB's Supabase project.
+
+An administrator can alternatively use a dedicated, authenticated **NodeODM-compatible processor with the `gltf` option** via the environment configuration below. A saved owner WebODM connection takes precedence. The app does not purchase credits or auto-retry paid processing.
 
 Set these server-only variables in the existing Vercel project, then redeploy:
 
@@ -25,6 +31,7 @@ Set these server-only variables in the existing Vercel project, then redeploy:
 | --- | --- |
 | `XRAY_NODEODM_URL` | The processor's HTTPS API base URL; no credentials or token in the URL |
 | `XRAY_NODEODM_TOKEN` | The processor's authentication token, stored as a secret |
+| `XRAY_CONNECTION_ENCRYPTION_KEY` | 64 hex characters generated from 32 secure random bytes; required for the in-app WebODM connection form |
 | `SUPABASE_URL` | Existing JB's Supabase project URL |
 | `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` | Existing server-only Supabase credential |
 
@@ -32,7 +39,7 @@ Do not put any secret in a `NEXT_PUBLIC_` variable, Git, or chat. The app checks
 
 For self-hosting, the upstream [NodeODM Docker instructions](https://github.com/OpenDroneMap/NodeODM#readme) describe its supported image, token authentication, and persistent `/var/www/data` volume. A localhost processor on a home computer is not directly reachable from Vercel: it needs an authenticated HTTPS endpoint. Size the machine for the photo sets and restrict processor concurrency. Configure cleanup of abandoned staged uploads as well as completed tasks. This repository does not start or purchase a server automatically.
 
-A new Supabase installation needs `supabase/migrations/20261028172437_owner_xray_reconstruction.sql` applied and `node --env-file=.env.local scripts/setup-scan-storage.mjs` run. Both are already prepared on the JB's production project. The setup script creates only the dedicated private scan bucket.
+A new Supabase installation needs both migrations in `supabase/migrations/` applied and `node --env-file=.env.local scripts/setup-scan-storage.mjs` run. The setup script creates only the dedicated private scan bucket.
 
 ## Recovery and deletion
 
@@ -44,7 +51,7 @@ A new Supabase installation needs `supabase/migrations/20261028172437_owner_xray
 
 ## Verified and pending
 
-Verified: Node validation and authorization tests; complete browser workflows at 390 and 1365 pixels; real WebGL GLB display; orbit/zoom/wireframe; invalid model rejection; IndexedDB reopen; photo hashing; pause/resume; upload → processing → model flow against a mock NodeODM processor; production Next.js build; existing customer and owner regressions.
+Verified: 41 Node validation, authorization, encryption, owner-isolation and failure-recovery tests; complete browser workflows at 390 and 1365 pixels; rejected-token recovery and clearing; no token persistence in browser storage; real WebGL GLB display; orbit/zoom/wireframe; invalid model rejection; IndexedDB reopen; photo hashing; pause/resume; upload → processing → model flow against a mock NodeODM processor; production Next.js build; existing customer and owner regressions. The selected live WebODM `/info` and `/options` endpoints return 401 without a token. Production credential-table grants deny both anonymous and signed-in browser reads/writes.
 
 Live Supabase verification used a disposable job: 12 signed uploads, exact-byte retrieval/transfer, job transitions and leases, private model upload and signed download, anonymous denial, and full cleanup. Owner and customer RLS visibility were tested in a rolled-back transaction. No test jobs or assets remain.
 
@@ -67,6 +74,8 @@ Roll back the app deployment to 2.4.1 to remove the new entry controls. Leave th
 ## Primary references
 
 - [NodeODM staged upload and task API](https://github.com/OpenDroneMap/NodeODM/blob/master/docs/index.adoc)
+- [WebODM Lightning compatible API and server](https://webodm.net/api)
+- [WebODM Lightning account registration](https://webodm.net/register)
 - [ODM options, including GLB output](https://docs.opendronemap.org/arguments/)
 - [Supabase signed uploads](https://supabase.com/docs/reference/javascript/storage-from-createsigneduploadurl)
 - [Three.js GLTFLoader](https://threejs.org/docs/pages/GLTFLoader)

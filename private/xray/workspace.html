@@ -19,7 +19,14 @@
 <section class="scan-card" aria-labelledby="scanTitle">
  <span class="pr-status">PHOTO RECONSTRUCTION · OWNER ONLY</span><h2 id="scanTitle">Build a 3D scan</h2>
  <span id="scanConnection" class="scan-connection" role="status">Checking processor connection…</span>
- <p id="scanConnectionHelp" class="scan-note" hidden>The photo workflow is ready for a processing server. Automatic reconstruction is unavailable until it is connected. You can open an existing GLB model below now.</p>
+ <p id="scanConnectionHelp" class="scan-note" hidden>WebODM Lightning is selected as your hosted reconstruction server. Connect your account below to turn overlapping house photos into a 3D surface model.</p>
+ <details id="scanConnectionSetup" class="scan-guide"><summary>Connect reconstruction server</summary>
+ <p class="scan-note">Server: <strong>WebODM Lightning</strong>. Create an account, then copy its API token from the WebODM dashboard. Your WebODM account manages processing credits and charges.</p>
+ <div class="scan-actions"><a class="btn" href="https://webodm.net/register" target="_blank" rel="noopener noreferrer">Create WebODM account</a><a class="btn" href="https://webodm.net/" target="_blank" rel="noopener noreferrer">Open WebODM dashboard</a></div>
+ <form id="scanConnectForm" class="scan-form" autocomplete="off"><label class="pr-label" for="scanToken">WebODM API token</label><input id="scanToken" class="pr-field" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" minlength="16" maxlength="1024" required placeholder="Paste API token here" disabled/>
+ <div class="scan-actions"><button id="scanConnect" class="btn primary" type="submit" disabled>Connect WebODM</button><button id="scanCheck" class="btn" type="button" disabled>Check connection</button></div></form>
+ <p id="scanConnectNotice" class="scan-note" role="status" aria-live="polite">The token is encrypted on JB’s server. Connecting checks access without starting a scan or buying credits.</p>
+ </details>
  <details class="scan-guide"><summary>How to photograph a house for reconstruction</summary><ol>
   <li>Start with one connected area: the exterior, or one room. Photograph every surface you want included. Four pictures are not enough.</li>
   <li>Plan roughly 60–150 sharp photos for an exterior, with about 75% overlap between neighboring views. The app accepts 12–240 photos per scan; the minimum does not guarantee coverage.</li>

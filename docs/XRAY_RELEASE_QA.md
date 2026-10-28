@@ -1,6 +1,6 @@
-# Current release: 2.5.0
+# Current release: 2.5.1
 
-The photo reconstruction workflow, real GLB viewer, private cloud scan storage, and processor connection status are documented in [XRAY_RECONSTRUCTION.md](XRAY_RECONSTRUCTION.md). Automatic photo processing remains disabled until a real NodeODM-compatible processor is connected and verified. The 2.4.1 record below describes the earlier measured concept and owner-access transition; its statement about local-only photos applies to that earlier reference-project feature, not the new cloud scan workflow.
+The photo reconstruction workflow, real GLB viewer, private cloud scan storage, and secure in-app WebODM Lightning connection are documented in [XRAY_RECONSTRUCTION.md](XRAY_RECONSTRUCTION.md). The hosted server is selected; automatic photo processing remains disabled until the owner connects their real account token. The 2.4.1 record below describes the earlier measured concept and owner-access transition; its statement about local-only photos applies to that earlier reference-project feature, not the new cloud scan workflow.
 
 # JB’s X-Ray House owner-workspace verification
 

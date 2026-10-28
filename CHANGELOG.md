@@ -1,5 +1,13 @@
 # JB’s app releases
 
+## 2.5.1 — October 28, 2026
+
+- Selected WebODM Lightning's hosted reconstruction server and added an owner-only account connection form, token verification, and a connection check.
+- Encrypts each owner's token on the server, clears the input immediately, and never returns saved credentials. Failed checks preserve the existing connection; saved scans prevent switching processing accounts.
+- **Activation still requires the owner's real WebODM API token.** No provider account, credits, or paid processing was purchased.
+
+Validation: 41 Node tests; production build; all existing customer/owner browser checks and complete reconstruction flows at 390 and 1365 pixels, including connection failure and recovery. Verified production credential-table isolation and server configuration. Actual house photogrammetry remains pending account activation and representative photos.
+
 ## 2.5.0 — October 28, 2026
 
 - Added an owner-only photo reconstruction workflow with original JPG/PNG uploads, private cloud scan records, progress, pause/resume, retry, cancellation, and deletion.
