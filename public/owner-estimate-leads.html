@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Owner Estimate Requests | JB's</title><style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#202b3c;background:#f2f5f8}*{box-sizing:border-box}body{margin:0}.wrap{max-width:900px;margin:auto;padding:18px 16px 80px}header{background:#172033;color:white;padding:17px}.head{max-width:900px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}a{color:inherit}h1{font-size:clamp(26px,5vw,35px);margin:14px 0 6px}p{line-height:1.5}.muted{color:#66778b}.card{background:white;border:1px solid #dce4ed;padding:22px;border-radius:16px;margin:14px 0;box-shadow:0 10px 24px #0e234009}.tag{display:inline-block;background:#e8effa;padding:5px 10px;border-radius:99px;font-size:12px;font-weight:750}h2{margin:12px 0;font-size:21px}.detail{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}strong{display:block;font-size:13px;margin-bottom:5px}a.button,button{display:inline-block;padding:11px 16px;border:0;border-radius:9px;background:#cfa65e;color:#172033;font:inherit;font-weight:800;cursor:pointer;text-decoration:none}#message{padding:15px;background:#fff;border-radius:12px}@media(max-width:550px){.info{grid-template-columns:1fr}}</style></head><body><header><div class="head"><b>JB's · Owner Leads</b><a href="/">Back to app</a></div></header><main class="wrap"><h1>Website estimate requests</h1><p class="muted">Requests submitted through the new public estimate form. Only signed-in JB's owners can view these details.</p><button id="reload" type="button">Refresh requests</button><p id="message" role="status" aria-live="polite">Checking your owner session…</p><div id="leads"></div></main>
+<script>
+(()=>{
+const el=document.getElementById('leads'),status=document.getElementById('message');
+const text=(tag,content,cls)=>{const node=document.createElement(tag);node.textContent=content||'';if(cls)node.className=cls;return node};
+async function load(){
+ el.replaceChildren();status.textContent='Loading estimate requests…';
+ let session;
+ try{session=JSON.parse(localStorage.getItem('sb-bjmdtxxlzzhxskxkllvt-auth-token')||'null')}catch{}
+ if(!session?.access_token){status.textContent="Sign in to your JB's owner account in the app on this device, then reopen this page.";return;}
+ try{
+ const response=await fetch('/api/estimate/leads',{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
+ const json=await response.json();
+ if(!response.ok)throw Error(json.error||'Could not load requests.');
+ const leads=json.leads||[];status.textContent=leads.length+' estimate request'+(leads.length===1?'':'s')+' found.';
+ for(const lead of leads){
+ const card=text('article','', 'card');
+ card.append(text('span',lead.project_type||'Project','tag'));
+ card.append(text('h2',lead.customer_name||'Unknown'));
+ card.append(text('p',(lead.city||'')+' · '+new Date(lead.created_at).toLocaleString(),'muted'));
+ const info=text('div','','info');
+ for(const [title,value,prefix] of [['Phone',lead.phone,'tel:'],['Email',lead.customer_email,'mailto:'],['Timing',lead.timeframe,null],['Contact preference',lead.preferred_contact,null],['Source',lead.source,null]]){
+  if(!value)continue;const cell=text('div');cell.append(text('strong',title));if(prefix){const link=text('a',value);link.href=prefix+value;cell.append(link)}else cell.append(text('span',value));info.append(cell);
+ }
+ card.append(info);card.append(text('p',lead.description,'detail'));el.append(card);
+ }
+ }catch(error){status.textContent=error.message}
+}
+document.getElementById('reload').addEventListener('click',load);load();
+})();
+</script></body></html>
