@@ -517,7 +517,7 @@ function renderOwnerTools() {
           </header>
           <div class="jbs-owner-body">
             <div class="jbs-owner-overview"><div><strong>${state.ownerRecords.filter(r=>r.record_type!=='quote'&&!isCompleted(r)).length}</strong><span>Active projects</span></div><div><strong>${state.ownerRecords.filter(r=>r.record_type==='quote').length}</strong><span>Customer quotes</span></div><div><strong>${state.ownerOrders.filter(o=>o.status==='requested').length}</strong><span>Change requests</span></div></div>
-            <div class="jbs-owner-planning"><button data-owner-action="preview-guest">Preview Customer Side</button><button data-owner-action="preview-builder">Live Deck Builder</button><button data-owner-action="preview-paint">Photo Paint Visualizer</button><button data-owner-action="open-xray">X-Ray House · In development</button><small>Customer preview uses sample projects. Your owner account stays signed in.</small></div>
+            <div class="jbs-owner-planning"><button data-owner-action="preview-guest">Preview Customer Side</button><button data-owner-action="preview-builder">Live Deck Builder</button><button data-owner-action="preview-paint">Photo Paint Visualizer</button><button data-owner-action="open-xray">X-Ray House · In development</button><button data-owner-action="view-estimate-leads">Website Estimate Requests</button><small>Customer preview uses sample projects. Your owner account stays signed in.</small></div>
             ${state.ownerLoading ? `<div class="jbs-owner-loading"><div class="jbs-spinner"></div><p>Loading customer projects…</p></div>` : ""}
             ${state.ownerDraft.error ? `<div class="jbs-owner-alert">${escapeHtml(state.ownerDraft.error)} <button data-owner-action="refresh">Try again</button></div>` : ""}
             ${!state.ownerLoading && !state.ownerRecords.length ? `<div class="jbs-owner-empty"><h3>No customer records yet</h3><p>Add a customer record in the main owner dashboard, then manage its timeline here.</p></div>` : ""}
@@ -646,6 +646,7 @@ async function handleOwnerClick(event) {
     else if (action === "preview-builder") { startDemo(); openBuilder(); return; }
     else if (action === "preview-paint") { startDemo(); openPaint(); return; }
     else if (action === "open-xray" && state.owner && !state.demo) { window.location.assign("/scan-my-project.html"); return; }
+    else if (action === "view-estimate-leads" && state.owner && !state.demo) { window.location.assign("/owner-estimate-leads.html"); return; }
     else if (action === "refresh") return await loadOwnerData();
     else if (action === "section") state.ownerSection = target.dataset.section;
     else if (action === "choose-stage") state.ownerDraft.stage = target.dataset.stage;
