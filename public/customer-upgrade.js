@@ -836,7 +836,7 @@ function renderHeader(selected) {
         <div>
           <small>JB’S UNIVERSAL RENOVATIONS</small>
           <strong>${selected ? escapeHtml(selected.title) : pageTitle()}</strong>
-          <span>Built Tough. Fixed Right. Made to Last. · v${APP_VERSION}</span>
+          <span>Built Tough. Fixed Right. Made to Last.</span>
         </div>
       </div>
       <div class="jbs-header-actions"><span class="jbs-version-chip">v${APP_VERSION}</span>
