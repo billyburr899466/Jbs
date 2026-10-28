@@ -1,5 +1,16 @@
 # JB’s app releases
 
+## 2.4.0 — October 28, 2026
+
+- Scan My Project and X-Ray House, reachable from the sign-in screen, Tools, Explore, and the public website.
+- Photo references, measured shell proportions, layer presets, orbit/zoom, and labeled PNG export.
+- Local save/reopen, validated JSON backup/restore, explicit saved-project deletion, and unsaved-change protection.
+- Fixed the customer app startup syntax error, invalid floor SVG, partial-measurement roof pitch, partial photo batches, and silent project eviction at the storage limit.
+- Quote-response API returns clear errors for malformed payloads and service outages.
+- Existing customer accounts, records, messaging, and database schema are retained. X-Ray projects remain local to the browser.
+
+Validation: 18 Node tests; production build; mobile and desktop browser workflows, including X-Ray backup/restore and app navigation; mocked customer/owner workflows; unauthenticated API rejection. See `docs/XRAY_RELEASE_QA.md`.
+
 ## 2.3.0 — September 14, 2026
 
 An overall workspace refresh built on the September 11 release.

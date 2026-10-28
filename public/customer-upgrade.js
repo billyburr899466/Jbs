@@ -330,6 +330,11 @@ function enhanceEntry() {
   button.textContent = "Preview the Customer Demo";
   button.addEventListener("click", startDemo);
   card.insertBefore(button, version);
+  const scan = document.createElement('a');
+  scan.className = 'auth-switch secondary';
+  scan.href = '/scan-my-project.html';
+  scan.textContent = 'Scan My Project — no sign-in needed';
+  card.insertBefore(scan, version);
 }
 
 async function detectSession() {
@@ -1060,7 +1065,7 @@ function renderExplore() {
       <p>Browse project ideas, then save favorites to your private plan.</p>
       <label class="jbs-search"><span>⌕</span><input data-field="exploreSearch" value="${escapeHtml(state.exploreSearch || "")}" placeholder="Search decks, roofing, trailers…"></label>
     </section>
-    <section class="jbs-panel jbs-explore-builders"><h2>See your project take shape</h2><button class="jbs-primary" data-action="open-builder">Build a Deck</button><button class="jbs-outline" data-action="open-paint">Try Paint Colors</button></section>
+    <section class="jbs-panel jbs-explore-builders"><h2>See your project take shape</h2><button class="jbs-outline" data-action="open-xray">◈ X-Ray House & Project Scan</button><button class="jbs-primary" data-action="open-builder">Build a Deck</button><button class="jbs-outline" data-action="open-paint">Try Paint Colors</button></section>
     <section class="jbs-gallery-grid">
       ${items.map((idea, index) => `
         <article class="jbs-idea-card tone-${(index % 4) + 1}">
@@ -1087,7 +1092,7 @@ function renderMore() {
         ${toolButton("▦", "Deck & Project Builder", "Lay out a deck, preview it, and create a planning materials list.", "open-builder")}
         ${toolButton("≈", "Rough Cost Estimator", "Build a planning range—not a final quote.", "open-estimator")}
         ${toolButton("✎", "Saved Project Plans", "Continue your saved designs, notes, and measurements.", "show-plans")}
-        ${toolButton("◐", "Photo Paint Visualizer", "Try wall, trim, or exterior colors on your own photo.", "open-paint")}
+        ${toolButton("◈", "X-Ray House & Project Scan", "Add real house photos and measurements, then explore a conceptual cutaway.", "open-xray")}\n        ${toolButton("◐", "Photo Paint Visualizer", "Try wall, trim, or exterior colors on your own photo.", "open-paint")}
         ${toolButton("▧", "Photo Project Check", "Check whether your photos show enough detail.", "open-analyzer")}
         ${toolButton("↔", "Saved Measurements", "Store room, deck, roof, gutter, or trailer measurements.", "open-measurements")}
         ${toolButton("◐", "Materials & Colors", "Compare palettes and save favorites.", "open-materials")}
@@ -1260,7 +1265,7 @@ function renderModal() {
     maintenance: renderMaintenanceModal,
     install: renderInstallModal,
     notifications: renderNotificationModal,
-    release: () => `<p class="jbs-lead">Version ${APP_VERSION} · September 14, 2026</p><ul class="jbs-release-list"><li>A refreshed dashboard with clear next steps and quick access to saved designs.</li><li>Search and filter projects, quotes, plans, and requests.</li><li>Message drafts stay in place while you navigate. Failed sends keep your message for retry.</li><li>Owner customer tools organized into timeline, schedule, photos, and changes.</li><li>Live deck planning costs on mobile, clearer view controls, and named paint colors.</li></ul><button class="jbs-outline" data-release-check>Check for updates</button>`,
+    release: () => `<p class="jbs-lead">Version ${APP_VERSION} · October 28, 2026</p><ul class="jbs-release-list"><li>Scan My Project: photo references, measured shell proportions, X-Ray House views, and local backup/restore.</li><li>Open the same project tool from the website, sign-in screen, Tools, or Explore.</li><li>A refreshed dashboard with clear next steps and quick access to saved designs.</li><li>Search and filter projects, quotes, plans, and requests.</li><li>Message drafts stay in place while you navigate. Failed sends keep your message for retry.</li><li>Owner customer tools organized into timeline, schedule, photos, and changes.</li><li>Live deck planning costs on mobile, clearer view controls, and named paint colors.</li></ul><button class="jbs-outline" data-release-check>Check for updates</button>`,
     quoteChange: renderQuoteChangeModal,
     quoteSign: renderQuoteSignModal,
     projectPhoto: renderProjectPhotoModal,
@@ -1699,6 +1704,7 @@ async function handleClick(event) {
     if (action === "deck-rotate") { state.builderView.top=false;state.builderView.yaw+=Number(target.dataset.turn);updateBuilderPreview();return; }
     if (action === "deck-zoom") {state.builderView.zoom=Math.max(.7,Math.min(2,state.builderView.zoom+Number(target.dataset.zoom)));updateBuilderPreview();return;}
     if (action === "deck-framing") {state.builderView.framing=!state.builderView.framing;updateBuilderPreview();return;}
+    if (action === "open-xray") { window.location.assign("/scan-my-project.html"); return; }
     if (action === "open-builder") return await openBuilder();
     if (action === "edit-builder") return await editBuilder(target.dataset.id);
     if (action === "builder-next") return await builderNext();
