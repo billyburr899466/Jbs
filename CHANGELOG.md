@@ -1,5 +1,14 @@
 # JB’s app releases
 
+## 2.5.0 — October 28, 2026
+
+- Added an owner-only photo reconstruction workflow with original JPG/PNG uploads, private cloud scan records, progress, pause/resume, retry, cancellation, and deletion.
+- Added a NodeODM processing adapter and a real WebGL GLB viewer with orbit, zoom, wireframe, orientation, download, and local reopen. Reconstruction output is kept separate from the illustrative construction concept.
+- Preserved existing local projects and customer functionality. Added owner authorization on every scan API, row-level isolation, private signed storage URLs, job leases, and bounded model validation.
+- **Automatic photo-to-3D processing is waiting for a processor connection.** The UI clearly shows this and disables scan creation. Opening an existing GLB works now. No compute service or paid credits were provisioned.
+
+Validation: 35 Node tests, production build, existing customer/owner browser checks, reconstruction browser flows on mobile and desktop, live private storage round-trip and RLS checks with disposable test data. Actual house photogrammetry remains pending a real processor and representative photos. See `docs/XRAY_RECONSTRUCTION.md`.
+
 ## 2.4.1 — October 28, 2026
 
 - X-Ray House is an owner-only development workspace, opened from the owner’s Customer workspace panel.

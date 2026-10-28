@@ -4,3 +4,5 @@ node_modules/
 test-results/
 playwright-report/
 .env*
+public/xray-viewer.js
+public/xray-viewer.js.LEGAL.txt

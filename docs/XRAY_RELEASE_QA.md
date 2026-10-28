@@ -1,3 +1,7 @@
+# Current release: 2.5.0
+
+The photo reconstruction workflow, real GLB viewer, private cloud scan storage, and processor connection status are documented in [XRAY_RECONSTRUCTION.md](XRAY_RECONSTRUCTION.md). Automatic photo processing remains disabled until a real NodeODM-compatible processor is connected and verified. The 2.4.1 record below describes the earlier measured concept and owner-access transition; its statement about local-only photos applies to that earlier reference-project feature, not the new cloud scan workflow.
+
 # JB’s X-Ray House owner-workspace verification
 
 Date: October 28, 2026. App version: 2.4.1. Supersedes the initial public entry points in PR #4.

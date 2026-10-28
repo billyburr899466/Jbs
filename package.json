@@ -1,23 +1,28 @@
 {
   "name": "jbs-universal-renovations-app",
   "private": true,
-  "version": "2.4.1",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
-    "build": "next build",
+    "build": "npm run bundle:xray && next build",
     "start": "next start",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
-    "verify": "npm test && next build && node tests/browser.mjs",
-    "dev": "next dev --hostname 0.0.0.0"
+    "verify": "npm run bundle:xray && npm test && next build && node tests/browser.mjs",
+    "dev": "npm run bundle:xray && next dev --hostname 0.0.0.0",
+    "bundle:xray": "node scripts/bundle-xray.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "fflate": "0.8.2",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@sparticuz/chromium": "152.0.0",
+    "esbuild": "0.25.12",
     "playwright-core": "1.58.2"
   }
 }

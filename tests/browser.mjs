@@ -1,5 +1,8 @@
 import { xrayFlow, xrayAppNavigation } from './xray-browser.mjs';
 import { ownerXrayResponse } from '../lib/owner-xray.js';
+import { scansResponse } from '../lib/xray-scans.js';
+import { fakeScanServices, testGlb } from './scan-fixtures.mjs';
+import { reconstructionFlow } from './scans-browser.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -8,7 +11,7 @@ import chromium from '@sparticuz/chromium';
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p','3210'],{stdio:['ignore','pipe','pipe']});
 server.stdout.on('data',s=>process.stdout.write(s));server.stderr.on('data',s=>process.stderr.write(s));
 let browser,lastPage;
-const watchdog=setTimeout(()=>{console.error('Browser verification exceeded 4 minutes');server.kill();process.exit(1);},240000);
+const watchdog=setTimeout(()=>{console.error('Browser verification exceeded 7 minutes');server.kill();process.exit(1);},420000);
 const url='http://127.0.0.1:3210';
 mkdirSync('test-results',{recursive:true});
 // Capture review images locally when requested; deployment checks assert the UI directly.
@@ -25,6 +28,9 @@ async function context(owner=false,width=390){
  const plans=[];const requests=[];const messages=[];const flags={failMessage:false};const records=owner===true?[{id:'55555555-5555-4555-8555-555555555555',record_type:'project',title:'Schedule Test Project',customer_name:'Test Customer',customer_email:'schedule-test@example.com',status:'Scheduled',scheduled_start:'2026-10-05T09:00:00Z',scheduled_end:'2026-10-07T17:00:00Z'}]:[];
  const ctx=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'});
  const writes=[];const errors=[];
+ const scans=fakeScanServices();scans.configured=false;
+ await ctx.route('**/api/owner/scans**',async route=>{const req=route.request();const path=new URL(req.url()).pathname.replace('/api/owner/scans','').split('/').filter(Boolean);const request=new Request(req.url(),{method:req.method(),headers:req.headers(),body:['GET','HEAD'].includes(req.method())?undefined:req.postData()});const response=await scansResponse(request,path,{services:scans,fetchUser:async()=>Response.json(owner===true?user:{...actor,email:'customer-ui-test@example.com'})});await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});});
+ await ctx.route('https://storage.test/**',async route=>{if(route.request().method()==='PUT'){const parts=new URL(route.request().url()).pathname.split('/').filter(Boolean);const uploaded=scans.uploaded.get(parts[0])||[];if(!uploaded.includes(Number(parts[1])))uploaded.push(Number(parts[1]));scans.uploaded.set(parts[0],uploaded);return route.fulfill({status:200,body:'{}',headers:{'access-control-allow-origin':'*'}});}if(route.request().method()==='OPTIONS')return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-methods':'GET, PUT','access-control-allow-headers':'*'}});return route.fulfill({status:200,body:testGlb(),contentType:'model/gltf-binary',headers:{'access-control-allow-origin':'*'}});});
  await ctx.route('**/api/owner/xray',async route=>{const response=await ownerXrayResponse(new Request(route.request().url(),{headers:route.request().headers()}),async()=>Response.json(owner===true?user:{...actor,email:'customer-ui-test@example.com'}));await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});});
  await ctx.routeWebSocket('**/realtime/v1/websocket**',ws=>ws.onMessage(message=>{const value=JSON.parse(String(message));if(Array.isArray(value)){const [join,ref,topic,event]=value;if(event==='phx_join'||event==='heartbeat')ws.send(JSON.stringify([join,ref,topic,'phx_reply',{status:'ok',response:{postgres_changes:[]}}]));}}));
  await ctx.route('**/*.supabase.co/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.method()==='OPTIONS')return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
@@ -44,12 +50,12 @@ async function context(owner=false,width=390){
  });
  if(owner)await ctx.addInitScript(({token,user})=>localStorage.setItem('sb-bjmdtxxlzzhxskxkllvt-auth-token',JSON.stringify({access_token:token,refresh_token:'test-refresh',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user})),{token:actorToken,user:actor});
  const page=await ctx.newPage();lastPage=page;page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(30000);
- return {ctx,page,writes,errors,plans,requests,actor,flags,messages,records};
+ return {ctx,page,writes,errors,plans,requests,actor,flags,messages,records,scans};
 }
 async function visible(page,selector){await page.locator(selector).first().waitFor({state:'visible'});}
 async function click(page,selector){await page.locator(selector).first().click({noWaitAfter:true});}
 async function demoFlow(width){
- const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await visible(page,'.app-version');assert.match(await page.locator('.app-version').textContent(),/2\.4\.1/);await click(page,'.jbs-demo-entry');
+ const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await visible(page,'.app-version');assert.match(await page.locator('.app-version').textContent(),/2\.5\.0/);await click(page,'.jbs-demo-entry');
  await visible(page,'[data-action="open-builder"]');
  assert.equal(await page.locator('.jbs-bottom-nav [data-action="nav"][data-view="messages"]').count(),1);
  await capture(page,{path:`test-results/home-${width}.png`});
@@ -130,4 +136,4 @@ await page.waitForFunction(()=>document.querySelector('[data-owner-field="schedu
 assert.equal(records[0].scheduled_start,'2026-10-05T09:00:00.000Z');assert.equal(records[0].scheduled_end,'2026-10-07T17:00:00.000Z');
 await capture(page,{path:'test-results/owner-schedule.png'});
 assert.deepEqual(errors,[]);console.log('PASS owner: preview preserves session with no writes; schedule tabs keep drafts and note saves keep existing dates');await ctx.close();}
-try{await ready();await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();await xrayFlow(context,url,390,capture);await xrayFlow(context,url,1365,capture);await xrayAppNavigation(context,url);const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);assert.equal((await fetch(url+'/api/owner/xray')).status,401);for(const path of ['/scan-my-project.js','/xray-project.js','/private/xray/workspace.html'])assert.equal((await fetch(url+path)).status,404);const trace=JSON.parse(readFileSync('.next/server/app/api/owner/xray/route.js.nft.json','utf8'));for(const name of ['workspace.html','workspace.js','project.js'])assert.ok(trace.files.some(file=>file.endsWith('/private/xray/'+name)),name+' missing from deployment');console.log('PASS API: unauthenticated quote/lab access rejected; private assets unavailable; owner bundle traced');console.log('JBs 2.4.1 verification complete');}catch(e){console.error(e);if(lastPage)try{console.error('Current view:',(await lastPage.locator('body').innerText({timeout:2000})).slice(-3500));}catch{}process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}
+try{await ready();if(!process.env.JBS_ONLY_SCANS){await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();await xrayFlow(context,url,390,capture);await xrayFlow(context,url,1365,capture);await xrayAppNavigation(context,url);}await reconstructionFlow(context,url,390,capture);await reconstructionFlow(context,url,1365,capture);const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);assert.equal((await fetch(url+'/api/owner/xray')).status,401);for(const path of ['/scan-my-project.js','/xray-project.js','/private/xray/workspace.html'])assert.equal((await fetch(url+path)).status,404);const trace=JSON.parse(readFileSync('.next/server/app/api/owner/xray/route.js.nft.json','utf8'));for(const name of ['workspace.html','workspace.js','project.js'])assert.ok(trace.files.some(file=>file.endsWith('/private/xray/'+name)),name+' missing from deployment');console.log('PASS API: unauthenticated quote/lab access rejected; private assets unavailable; owner bundle traced');console.log('JBs 2.5.0 verification complete');}catch(e){console.error(e);if(lastPage)try{console.error('Current view:',(await lastPage.locator('body').innerText({timeout:2000})).slice(-3500));}catch{}process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}
