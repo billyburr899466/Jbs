@@ -1,5 +1,14 @@
 # JB’s app releases
 
+## 2.4.1 — October 28, 2026
+
+- X-Ray House is an owner-only development workspace, opened from the owner’s Customer workspace panel.
+- Removed customer/demo/sign-in entry points and public website promotion.
+- Server verifies the signed-in account with Supabase before delivering the lab; anonymous users and customer accounts cannot obtain it.
+- Model assets moved out of public hosting. Responses are private and uncached. Saved projects and backups keep their existing format and browser storage key.
+
+Validation: 23 Node tests, production compilation, mobile/desktop X-Ray flows, owner return navigation, customer/guest denial, and all existing customer/owner browser workflows.
+
 ## 2.4.0 — October 28, 2026
 
 - Scan My Project and X-Ray House, reachable from the sign-in screen, Tools, Explore, and the public website.

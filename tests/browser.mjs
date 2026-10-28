@@ -1,4 +1,5 @@
 import { xrayFlow, xrayAppNavigation } from './xray-browser.mjs';
+import { ownerXrayResponse } from '../lib/owner-xray.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -24,6 +25,7 @@ async function context(owner=false,width=390){
  const plans=[];const requests=[];const messages=[];const flags={failMessage:false};const records=owner===true?[{id:'55555555-5555-4555-8555-555555555555',record_type:'project',title:'Schedule Test Project',customer_name:'Test Customer',customer_email:'schedule-test@example.com',status:'Scheduled',scheduled_start:'2026-10-05T09:00:00Z',scheduled_end:'2026-10-07T17:00:00Z'}]:[];
  const ctx=await browser.newContext({viewport:{width,height:900},serviceWorkers:'block'});
  const writes=[];const errors=[];
+ await ctx.route('**/api/owner/xray',async route=>{const response=await ownerXrayResponse(new Request(route.request().url(),{headers:route.request().headers()}),async()=>Response.json(owner===true?user:{...actor,email:'customer-ui-test@example.com'}));await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});});
  await ctx.routeWebSocket('**/realtime/v1/websocket**',ws=>ws.onMessage(message=>{const value=JSON.parse(String(message));if(Array.isArray(value)){const [join,ref,topic,event]=value;if(event==='phx_join'||event==='heartbeat')ws.send(JSON.stringify([join,ref,topic,'phx_reply',{status:'ok',response:{postgres_changes:[]}}]));}}));
  await ctx.route('**/*.supabase.co/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.method()==='OPTIONS')return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
   if(!['GET','HEAD'].includes(req.method()))writes.push({path:u.pathname,method:req.method(),data:req.postData()});
@@ -47,7 +49,7 @@ async function context(owner=false,width=390){
 async function visible(page,selector){await page.locator(selector).first().waitFor({state:'visible'});}
 async function click(page,selector){await page.locator(selector).first().click({noWaitAfter:true});}
 async function demoFlow(width){
- const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await visible(page,'.app-version');assert.match(await page.locator('.app-version').textContent(),/2\.4\.0/);await click(page,'.jbs-demo-entry');
+ const {ctx,page,writes,errors}=await context(false,width);await page.goto(url);await visible(page,'.app-version');assert.match(await page.locator('.app-version').textContent(),/2\.4\.1/);await click(page,'.jbs-demo-entry');
  await visible(page,'[data-action="open-builder"]');
  assert.equal(await page.locator('.jbs-bottom-nav [data-action="nav"][data-view="messages"]').count(),1);
  await capture(page,{path:`test-results/home-${width}.png`});
@@ -128,4 +130,4 @@ await page.waitForFunction(()=>document.querySelector('[data-owner-field="schedu
 assert.equal(records[0].scheduled_start,'2026-10-05T09:00:00.000Z');assert.equal(records[0].scheduled_end,'2026-10-07T17:00:00.000Z');
 await capture(page,{path:'test-results/owner-schedule.png'});
 assert.deepEqual(errors,[]);console.log('PASS owner: preview preserves session with no writes; schedule tabs keep drafts and note saves keep existing dates');await ctx.close();}
-try{await ready();await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();await xrayFlow(context,url,390,capture);await xrayFlow(context,url,1365,capture);await xrayAppNavigation(context,url);const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);console.log('PASS API: unauthenticated quote response rejected');console.log('JBs 2.4.0 verification complete');}catch(e){console.error(e);if(lastPage)try{console.error('Current view:',(await lastPage.locator('body').innerText({timeout:2000})).slice(-3500));}catch{}process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}
+try{await ready();await demoFlow(390);await demoFlow(1365);await customerFlow();await ownerFlow();await xrayFlow(context,url,390,capture);await xrayFlow(context,url,1365,capture);await xrayAppNavigation(context,url);const denied=await fetch(url+'/api/quote-response',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(denied.status,401);assert.equal((await fetch(url+'/api/owner/xray')).status,401);for(const path of ['/scan-my-project.js','/xray-project.js','/private/xray/workspace.html'])assert.equal((await fetch(url+path)).status,404);const trace=JSON.parse(readFileSync('.next/server/app/api/owner/xray/route.js.nft.json','utf8'));for(const name of ['workspace.html','workspace.js','project.js'])assert.ok(trace.files.some(file=>file.endsWith('/private/xray/'+name)),name+' missing from deployment');console.log('PASS API: unauthenticated quote/lab access rejected; private assets unavailable; owner bundle traced');console.log('JBs 2.4.1 verification complete');}catch(e){console.error(e);if(lastPage)try{console.error('Current view:',(await lastPage.locator('body').innerText({timeout:2000})).slice(-3500));}catch{}process.exitCode=1;}finally{clearTimeout(watchdog);await browser?.close().catch(()=>{});server.kill();}

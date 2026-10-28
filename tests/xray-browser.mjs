@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 export async function xrayFlow(context, url, width, capture) {
- const {ctx,page,writes,errors}=await context(false,width);
+ const {ctx,page,writes,errors}=await context(true,width);
  if(width===390)await ctx.addInitScript(()=>{window.createImageBitmap=undefined});
  await page.goto(url+'/scan-my-project.html');
  await page.waitForFunction(()=>document.querySelectorAll('#draw [data-layer]').length>100);
@@ -64,12 +64,21 @@ export async function xrayFlow(context, url, width, capture) {
 }
 
 export async function xrayAppNavigation(context,url){
- const {ctx,page,errors}=await context('customer',390);
- await page.goto(url);await page.locator('#jbs-customer-upgrade-root').waitFor({state:'visible'});
- await page.locator('[data-action="nav"][data-view="more"]').first().click();
- await page.locator('[data-action="open-xray"]').click();await page.waitForURL('**/scan-my-project.html');
- await page.locator('.workspace-links a[href="/portal"]').click();await page.locator('#jbs-customer-upgrade-root').waitFor({state:'visible'});
+ let session=await context(true,390);let {ctx,page,errors}=session;
+ await page.goto(url);await page.locator('[data-owner-action="toggle"]').click();
+ await page.locator('[data-owner-action="open-xray"]').click();await page.waitForURL('**/scan-my-project.html');
+ await page.locator('#house').waitFor({state:'visible'});
+ await page.locator('.workspace-links a[href="/portal"]').click();await page.locator('[data-owner-action="toggle"]').waitFor({state:'visible'});
  assert.ok(await page.evaluate(()=>localStorage.getItem('sb-bjmdtxxlzzhxskxkllvt-auth-token')));
- await page.locator('[data-action="nav"][data-view="explore"]').first().click();await page.locator('[data-action="open-xray"]').click();await page.waitForURL('**/scan-my-project.html');
- assert.deepEqual(errors,[]);console.log('PASS app integration: Tools and Explore open Xray; return to app keeps the signed-in customer session');await ctx.close();
+ assert.deepEqual(errors,[]);await ctx.close();
+ session=await context('customer',390);({ctx,page,errors}=session);
+ await page.goto(url);await page.locator('#jbs-customer-upgrade-root').waitFor({state:'visible'});
+ for(const view of ['more','explore']){await page.locator('[data-action="nav"][data-view="'+view+'"]').first().click();assert.equal(await page.locator('[data-action="open-xray"],[data-owner-action="open-xray"]').count(),0);}
+ await page.goto(url+'/scan-my-project.html');await page.waitForFunction(()=>document.querySelector('#owner-status')?.textContent.includes('only'));
+ assert.equal(await page.locator('#house').count(),0);assert.deepEqual(errors,[]);await ctx.close();
+ session=await context(false,390);({ctx,page,errors}=session);
+ await page.goto(url);await page.locator('.jbs-demo-entry').waitFor({state:'visible'});assert.equal(await page.locator('a[href="/scan-my-project.html"]').count(),0);
+ await page.goto(url+'/scan-my-project.html');await page.waitForFunction(()=>document.querySelector('#owner-status')?.textContent.includes('Sign in'));
+ assert.equal(await page.locator('#house').count(),0);assert.deepEqual(errors,[]);await ctx.close();
+ console.log('PASS owner integration: owner lab opens and retains session; customer/guest links absent and direct access denied');
 }
