@@ -330,6 +330,11 @@ function enhanceEntry() {
   button.textContent = "Preview the Customer Demo";
   button.addEventListener("click", startDemo);
   card.insertBefore(button, version);
+  const scan = document.createElement('a');
+  scan.className = 'auth-switch secondary';
+  scan.href = '/scan-my-project.html';
+  scan.textContent = 'Scan My Project — no sign-in needed';
+  card.insertBefore(scan, version);
 }
 
 async function detectSession() {
@@ -1260,7 +1265,7 @@ function renderModal() {
     maintenance: renderMaintenanceModal,
     install: renderInstallModal,
     notifications: renderNotificationModal,
-    release: () => `<p class="jbs-lead">Version ${APP_VERSION} · September 14, 2026</p><ul class="jbs-release-list"><li>A refreshed dashboard with clear next steps and quick access to saved designs.</li><li>Search and filter projects, quotes, plans, and requests.</li><li>Message drafts stay in place while you navigate. Failed sends keep your message for retry.</li><li>Owner customer tools organized into timeline, schedule, photos, and changes.</li><li>Live deck planning costs on mobile, clearer view controls, and named paint colors.</li></ul><button class="jbs-outline" data-release-check>Check for updates</button>`,
+    release: () => `<p class="jbs-lead">Version ${APP_VERSION} · October 28, 2026</p><ul class="jbs-release-list"><li>Scan My Project: photo references, measured shell proportions, X-Ray House views, and local backup/restore.</li><li>Open the same project tool from the website, sign-in screen, Tools, or Explore.</li><li>A refreshed dashboard with clear next steps and quick access to saved designs.</li><li>Search and filter projects, quotes, plans, and requests.</li><li>Message drafts stay in place while you navigate. Failed sends keep your message for retry.</li><li>Owner customer tools organized into timeline, schedule, photos, and changes.</li><li>Live deck planning costs on mobile, clearer view controls, and named paint colors.</li></ul><button class="jbs-outline" data-release-check>Check for updates</button>`,
     quoteChange: renderQuoteChangeModal,
     quoteSign: renderQuoteSignModal,
     projectPhoto: renderProjectPhotoModal,
@@ -1699,7 +1704,8 @@ async function handleClick(event) {
     if (action === "deck-rotate") { state.builderView.top=false;state.builderView.yaw+=Number(target.dataset.turn);updateBuilderPreview();return; }
     if (action === "deck-zoom") {state.builderView.zoom=Math.max(.7,Math.min(2,state.builderView.zoom+Number(target.dataset.zoom)));updateBuilderPreview();return;}
     if (action === "deck-framing") {state.builderView.framing=!state.builderView.framing;updateBuilderPreview();return;}
-    if (action === "open-xray") { window.location.assign("/scan-my-project.html"); return; }\n    if (action === "open-builder") return await openBuilder();
+    if (action === "open-xray") { window.location.assign("/scan-my-project.html"); return; }
+    if (action === "open-builder") return await openBuilder();
     if (action === "edit-builder") return await editBuilder(target.dataset.id);
     if (action === "builder-next") return await builderNext();
     if (action === "builder-prev") {

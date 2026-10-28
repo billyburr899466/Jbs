@@ -21,6 +21,14 @@ async function supabaseRequest(path, token, init = {}) {
 }
 
 export async function POST(request) {
+  try {
+    return await respondToQuote(request);
+  } catch {
+    return jsonError("The quote service is temporarily unavailable. Please try again.", 503);
+  }
+}
+
+async function respondToQuote(request) {
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   if (!token) return jsonError("Please sign in again before responding.", 401);
@@ -30,6 +38,10 @@ export async function POST(request) {
     body = await request.json();
   } catch {
     return jsonError("The response could not be read.");
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return jsonError("The response must contain your quote details.");
   }
 
   const quoteId = String(body.quoteId || "").trim();
