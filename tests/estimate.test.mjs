@@ -28,4 +28,8 @@ test('public form and owner inbox have required wiring',()=>{
  assert.ok(inbox.includes('/api/estimate/leads'));
  assert.ok(app.includes('view-estimate-leads'));
  assert.ok(form.includes("window.fbq('track','Lead')"));
+ assert.ok(form.includes("params.get('utm_content')"));
+ assert.ok(inbox.includes('Facebook ad quotes'));
+ assert.ok(inbox.includes('Garage campaign quotes'));
+ assert.ok(inbox.includes('Other form quotes'));
 });
