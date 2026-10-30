@@ -45,7 +45,7 @@ button{appearance:none;background:#d2a350;color:#172033;border:0;border-radius:1
 <p class="footer">JB's Universal Renovations · Elkhart County, Indiana</p></main>
 <script>
 (()=>{const form=document.querySelector('#estimateForm'),status=document.querySelector('#status'),button=document.querySelector('#submitBtn');
-const params=new URLSearchParams(location.search),campaign=params.get('utm_campaign')||'website',medium=params.get('utm_source')||'direct';
+const params=new URLSearchParams(location.search),campaign=params.get('utm_campaign')||'website',medium=params.get('utm_source')||'direct',placement=params.get('utm_content')||'';
 form.addEventListener('submit',async event=>{
  event.preventDefault();status.className='';status.style.display='none';
  if(!form.reportValidity())return;
@@ -53,7 +53,7 @@ form.addEventListener('submit',async event=>{
  if(!data.phone&&!data.email){status.className='error';status.textContent='Enter a phone number or email address.';return;}
  button.disabled=true;button.textContent='Sending…';
  try{
- const response=await fetch('/api/estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,consent:form.elements.consent.checked,source:(medium+':'+campaign).slice(0,100)})});
+ const response=await fetch('/api/estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,consent:form.elements.consent.checked,source:([medium,campaign,placement].filter(Boolean).join(':')).slice(0,100)})});
  const result=await response.json();
  if(!response.ok||!result.ok)throw Error(result.error||'Unable to send your request.');
  form.reset();status.className='success';status.textContent="Request received. Thank you! JB's will contact you about your project.";
